@@ -4,9 +4,84 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Koccie Performance Overview</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-  <h1>Koccie Performance Overview</h1>
-  <p>Dashboard đã chạy thành công.</p>
+  <div class="app">
+    <header class="header">
+      <div>
+        <h1>📊 Koccie Performance Overview</h1>
+        <p>Dashboard đọc dữ liệu tự động từ Google Sheets</p>
+      </div>
+      <div class="status" id="status">Đang tải dữ liệu...</div>
+    </header>
+
+    <section class="kpi-grid">
+      <div class="card">
+        <p>Total Orders</p>
+        <h2 id="totalOrders">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Total Sales</p>
+        <h2 id="totalSales">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Total Ads Spend</p>
+        <h2 id="totalAds">-</h2>
+      </div>
+
+      <div class="card">
+        <p>ROAS</p>
+        <h2 id="roas">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Net Profit</p>
+        <h2 id="profit">-</h2>
+      </div>
+
+      <div class="card">
+        <p>AOV</p>
+        <h2 id="aov">-</h2>
+      </div>
+
+      <div class="card">
+        <p>% Ads / Sales</p>
+        <h2 id="adsPercent">-</h2>
+      </div>
+    </section>
+
+    <section class="chart-card">
+      <h3>Daily Performance</h3>
+      <canvas id="performanceChart"></canvas>
+    </section>
+
+    <section class="table-card">
+      <h3>Daily Data</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Orders</th>
+              <th>Sales</th>
+              <th>Ads Spend</th>
+              <th>ROAS</th>
+              <th>Profit</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
