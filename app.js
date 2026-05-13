@@ -5,7 +5,10 @@ let currentChart = null;
 
 function normalizeHeader(value) {
   return String(value || "")
+    .replace(/\uFEFF/g, "")
     .replace(/\u00A0/g, " ")
+    .replace(/\r/g, " ")
+    .replace(/\n/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -31,9 +34,7 @@ function cleanNumber(value) {
 
   if (Number.isNaN(number)) return 0;
 
-  if (negativeByParentheses) return -Math.abs(number);
-
-  return number;
+  return negativeByParentheses ? -Math.abs(number) : number;
 }
 
 function formatMoney(value) {
@@ -113,7 +114,6 @@ function parseDate(value) {
     const year = Number(ymd[1]);
     const month = Number(ymd[2]);
     const day = Number(ymd[3]);
-
     const date = new Date(year, month - 1, day);
 
     if (!Number.isNaN(date.getTime())) return date;
@@ -171,82 +171,31 @@ function toInputDate(date) {
 }
 
 function normalizeRow(row) {
-  const dateText = String(getValue(row, ["Date", "date", "Ngày"]) || "").trim();
+  const dateText = String(getValue(row, ["Date"]) || "").trim();
   const dateObj = parseDate(dateText);
 
-  const totalOrders = cleanNumber(getValue(row, [
-    "Total Orders",
-    "Orders",
-    "orders"
-  ]));
+  const totalOrders = cleanNumber(getValue(row, ["Total Orders"]));
+  const totalSales = cleanNumber(getValue(row, ["Total Sales"]));
+  const fbAdsSpend = cleanNumber(getValue(row, ["FB Ads Spend"]));
+  const googleAdsSpend = cleanNumber(getValue(row, ["Google Ads Spend"]));
 
-  const totalSales = cleanNumber(getValue(row, [
-    "Total Sales",
-    "Sales",
-    "Revenue",
-    "revenue"
-  ]));
-
-  const fbAdsSpend = cleanNumber(getValue(row, [
-    "FB Ads Spend",
-    "Facebook Ads Spend",
-    "Meta Ads Spend",
-    "FB Ads"
-  ]));
-
-  const googleAdsSpend = cleanNumber(getValue(row, [
-    "Google Ads Spend",
-    "GG Ads Spend",
-    "Google Ads"
-  ]));
-
-  const totalAdsRaw = getValue(row, [
-    "Total Ads Spend",
-    "Ads Spend",
-    "Total Ads",
-    "ads"
-  ]);
-
+  const totalAdsRaw = getValue(row, ["Total Ads Spend"]);
   let totalAdsSpend = cleanNumber(totalAdsRaw);
 
   if ((totalAdsRaw === "" || totalAdsSpend === 0) && (fbAdsSpend || googleAdsSpend)) {
     totalAdsSpend = fbAdsSpend + googleAdsSpend;
   }
 
-  let roas = cleanNumber(getValue(row, [
-    "ROAS",
-    "roas"
-  ]));
+  let roas = cleanNumber(getValue(row, ["ROAS"]));
 
   if (roas === 0 && totalAdsSpend > 0) {
     roas = totalSales / totalAdsSpend;
   }
 
-  const profit = cleanNumber(getValue(row, [
-    "Profit",
-    "Net Profit",
-    "profit"
-  ]));
-
-  const apiCost = cleanNumber(getValue(row, [
-    "API Cost",
-    "Api Cost",
-    "api cost",
-    "API"
-  ]));
-
-  const fulfillCost = cleanNumber(getValue(row, [
-    "Fulfill Cost",
-    "Fulfillment Cost",
-    "fulfill cost",
-    "Fulfill"
-  ]));
-
-  const fixedCost = cleanNumber(getValue(row, [
-    "Fixed Cost",
-    "fixed cost",
-    "Fixed"
-  ]));
+  const profit = cleanNumber(getValue(row, ["Profit"]));
+  const apiCost = cleanNumber(getValue(row, ["API Cost"]));
+  const fulfillCost = cleanNumber(getValue(row, ["Fulfill Cost"]));
+  const fixedCost = cleanNumber(getValue(row, ["Fixed Cost"]));
 
   return {
     dateText,
@@ -269,10 +218,9 @@ function isValidDataRow(row) {
 
   const dateLower = row.dateText.toLowerCase();
 
-  if (dateLower.includes("total")) return false;
-  if (dateLower.includes("date")) return false;
+  if (dateLower === "total") return false;
+  if (dateLower === "date") return false;
   if (dateLower.includes("daily overview")) return false;
-
   if (!row.dateObj) return false;
 
   return true;
@@ -568,15 +516,8 @@ function setupFilters() {
 
 function findHeaderIndex(rows) {
   return rows.findIndex(row => {
-    const normalizedCells = row.map(cell =>
-      normalizeHeader(cell).toLowerCase()
-    );
-
-    return (
-      normalizedCells.includes("date") &&
-      normalizedCells.includes("total orders") &&
-      normalizedCells.includes("total sales")
-    );
+    const firstCell = normalizeHeader(row[0]).toLowerCase();
+    return firstCell === "date";
   });
 }
 
@@ -610,7 +551,7 @@ function loadData() {
       const headerIndex = findHeaderIndex(rows);
 
       if (headerIndex === -1) {
-        setText("status", "Không tìm thấy dòng header: Date / Total Orders / Total Sales");
+        setText("status", "Không tìm thấy dòng header ở cột A: Date");
         return;
       }
 
