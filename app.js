@@ -3,73 +3,224 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22Hikx
 let allData = [];
 let currentChart = null;
 
+function normalizeHeader(value) {
+  return String(value || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function cleanNumber(value) {
   if (value === undefined || value === null) return 0;
 
-  const cleaned = String(value)
-    .replace(/\$/g, "")
-    .replace(/,/g, "")
-    .replace(/%/g, "")
-    .replace(/\s/g, "")
+  const raw = String(value)
+    .replace(/\u00A0/g, " ")
+    .replace(/−/g, "-")
     .trim();
 
-  if (cleaned === "" || cleaned === "-") return 0;
+  if (raw === "" || raw === "-" || raw === "—") return 0;
 
-  return Number(cleaned) || 0;
+  const negativeByParentheses = /^\(.*\)$/.test(raw);
+
+  const cleaned = raw
+    .replace(/[,$%\s]/g, "")
+    .replace(/[()]/g, "")
+    .trim();
+
+  const number = Number(cleaned);
+
+  if (Number.isNaN(number)) return 0;
+
+  if (negativeByParentheses) return -Math.abs(number);
+
+  return number;
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  value = Number(value) || 0;
+
+  const absValue = Math.abs(value);
+
+  const formatted = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(value);
+  }).format(absValue);
+
+  return value < 0 ? `-$ ${formatted}` : `$ ${formatted}`;
 }
 
 function formatNumber(value) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0
-  }).format(value);
+  }).format(Number(value) || 0);
 }
 
 function formatPercent(value) {
-  return `${value.toFixed(1)}%`;
+  return `% ${(Number(value) || 0).toFixed(1)}`;
+}
+
+function formatRoas(value) {
+  return `${(Number(value) || 0).toFixed(2)}x`;
+}
+
+function safeDivide(numerator, denominator) {
+  numerator = Number(numerator) || 0;
+  denominator = Number(denominator) || 0;
+
+  if (denominator === 0) return 0;
+
+  return numerator / denominator;
+}
+
+function safePercent(numerator, denominator) {
+  return safeDivide(numerator, denominator) * 100;
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.textContent = value;
+  }
 }
 
 function getValue(row, possibleNames) {
+  const keys = Object.keys(row);
+
   for (const name of possibleNames) {
-    if (row[name] !== undefined) return row[name];
+    const normalizedName = normalizeHeader(name).toLowerCase();
+
+    const matchedKey = keys.find(key =>
+      normalizeHeader(key).toLowerCase() === normalizedName
+    );
+
+    if (matchedKey !== undefined) {
+      return row[matchedKey];
+    }
   }
+
   return "";
 }
 
-function normalizeRow(row) {
-  const date = getValue(row, ["Date", "date", "Ngày"]);
+function parseDate(value) {
+  if (!value) return null;
 
-  const orders = cleanNumber(getValue(row, [
+  const raw = String(value).trim();
+
+  const ymd = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]);
+    const day = Number(ymd[3]);
+
+    const date = new Date(year, month - 1, day);
+
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+
+  const dmyOrMdy = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+
+  if (dmyOrMdy) {
+    let first = Number(dmyOrMdy[1]);
+    let second = Number(dmyOrMdy[2]);
+    const year = Number(dmyOrMdy[3]);
+
+    let day = first;
+    let month = second;
+
+    if (second > 12) {
+      month = first;
+      day = second;
+    }
+
+    const date = new Date(year, month - 1, day);
+
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+
+  const fallback = new Date(raw);
+
+  if (!Number.isNaN(fallback.getTime())) {
+    return new Date(
+      fallback.getFullYear(),
+      fallback.getMonth(),
+      fallback.getDate()
+    );
+  }
+
+  return null;
+}
+
+function dateOnly(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function toInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeRow(row) {
+  const dateText = String(getValue(row, ["Date", "date", "Ngày"]) || "").trim();
+  const dateObj = parseDate(dateText);
+
+  const totalOrders = cleanNumber(getValue(row, [
     "Total Orders",
     "Orders",
     "orders"
   ]));
 
-  const sales = cleanNumber(getValue(row, [
+  const totalSales = cleanNumber(getValue(row, [
     "Total Sales",
     "Sales",
     "Revenue",
     "revenue"
   ]));
 
-  const ads = cleanNumber(getValue(row, [
+  const fbAdsSpend = cleanNumber(getValue(row, [
+    "FB Ads Spend",
+    "Facebook Ads Spend",
+    "Meta Ads Spend",
+    "FB Ads"
+  ]));
+
+  const googleAdsSpend = cleanNumber(getValue(row, [
+    "Google Ads Spend",
+    "GG Ads Spend",
+    "Google Ads"
+  ]));
+
+  const totalAdsRaw = getValue(row, [
     "Total Ads Spend",
     "Ads Spend",
     "Total Ads",
     "ads"
-  ]));
+  ]);
 
-  const roas = cleanNumber(getValue(row, [
+  let totalAdsSpend = cleanNumber(totalAdsRaw);
+
+  if ((totalAdsRaw === "" || totalAdsSpend === 0) && (fbAdsSpend || googleAdsSpend)) {
+    totalAdsSpend = fbAdsSpend + googleAdsSpend;
+  }
+
+  let roas = cleanNumber(getValue(row, [
     "ROAS",
     "roas"
   ]));
+
+  if (roas === 0 && totalAdsSpend > 0) {
+    roas = totalSales / totalAdsSpend;
+  }
 
   const profit = cleanNumber(getValue(row, [
     "Profit",
@@ -98,10 +249,13 @@ function normalizeRow(row) {
   ]));
 
   return {
-    date,
-    orders,
-    sales,
-    ads,
+    dateText,
+    dateObj,
+    totalOrders,
+    totalSales,
+    fbAdsSpend,
+    googleAdsSpend,
+    totalAdsSpend,
     roas,
     profit,
     apiCost,
@@ -111,55 +265,22 @@ function normalizeRow(row) {
 }
 
 function isValidDataRow(row) {
-  if (!row.date) return false;
+  if (!row.dateText) return false;
 
-  const dateText = String(row.date).toLowerCase().trim();
+  const dateLower = row.dateText.toLowerCase();
 
-  if (dateText.includes("total")) return false;
-  if (dateText.includes("date")) return false;
-  if (dateText.includes("daily overview")) return false;
+  if (dateLower.includes("total")) return false;
+  if (dateLower.includes("date")) return false;
+  if (dateLower.includes("daily overview")) return false;
+
+  if (!row.dateObj) return false;
 
   return true;
 }
 
-function parseDate(value) {
-  if (!value) return null;
-
-  const raw = String(value).trim();
-
-  let date = new Date(raw);
-  if (!isNaN(date.getTime())) return date;
-
-  const parts = raw.split(/[\/\-]/);
-
-  if (parts.length === 3) {
-    const a = Number(parts[0]);
-    const b = Number(parts[1]);
-    const c = Number(parts[2]);
-
-    if (String(parts[0]).length === 4) {
-      date = new Date(a, b - 1, c);
-    } else {
-      date = new Date(c, b - 1, a);
-    }
-
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  return null;
-}
-
-function dateOnly(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function formatDateInput(date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function getLatestDate(data) {
   const dates = data
-    .map(row => parseDate(row.date))
+    .map(row => row.dateObj)
     .filter(Boolean)
     .map(dateOnly)
     .sort((a, b) => b - a);
@@ -167,35 +288,76 @@ function getLatestDate(data) {
   return dates[0] || null;
 }
 
+function calculateTotals(data) {
+  return data.reduce((totals, row) => {
+    totals.totalOrders += row.totalOrders;
+    totals.totalSales += row.totalSales;
+    totals.fbAdsSpend += row.fbAdsSpend;
+    totals.googleAdsSpend += row.googleAdsSpend;
+    totals.totalAdsSpend += row.totalAdsSpend;
+    totals.profit += row.profit;
+    totals.apiCost += row.apiCost;
+    totals.fulfillCost += row.fulfillCost;
+    totals.fixedCost += row.fixedCost;
+
+    return totals;
+  }, {
+    totalOrders: 0,
+    totalSales: 0,
+    fbAdsSpend: 0,
+    googleAdsSpend: 0,
+    totalAdsSpend: 0,
+    profit: 0,
+    apiCost: 0,
+    fulfillCost: 0,
+    fixedCost: 0
+  });
+}
+
 function updateKPIs(data) {
-  const totalOrders = data.reduce((sum, row) => sum + row.orders, 0);
-  const totalSales = data.reduce((sum, row) => sum + row.sales, 0);
-  const totalAds = data.reduce((sum, row) => sum + row.ads, 0);
-  const totalProfit = data.reduce((sum, row) => sum + row.profit, 0);
-  const totalApiCost = data.reduce((sum, row) => sum + row.apiCost, 0);
-  const totalFulfillCost = data.reduce((sum, row) => sum + row.fulfillCost, 0);
-  const totalFixedCost = data.reduce((sum, row) => sum + row.fixedCost, 0);
+  const totals = calculateTotals(data);
 
-  const roas = totalAds > 0 ? totalSales / totalAds : 0;
-  const aov = totalOrders > 0 ? totalSales / totalOrders : 0;
-  const adsPercent = totalSales > 0 ? totalAds / totalSales * 100 : 0;
-  const apiPercent = totalSales > 0 ? totalApiCost / totalSales * 100 : 0;
-  const fulfillPercent = totalSales > 0 ? totalFulfillCost / totalSales * 100 : 0;
+  const aov = safeDivide(totals.totalSales, totals.totalOrders);
+  const roas = safeDivide(totals.totalSales, totals.totalAdsSpend);
 
-  document.getElementById("totalOrders").textContent = formatNumber(totalOrders);
-  document.getElementById("totalSales").textContent = formatMoney(totalSales);
-  document.getElementById("totalAds").textContent = formatMoney(totalAds);
-  document.getElementById("roas").textContent = `${roas.toFixed(2)}x`;
-  document.getElementById("profit").textContent = formatMoney(totalProfit);
-  document.getElementById("aov").textContent = formatMoney(aov);
-  document.getElementById("adsPercent").textContent = formatPercent(adsPercent);
-  document.getElementById("apiPercent").textContent = formatPercent(apiPercent);
-  document.getElementById("fulfillPercent").textContent = formatPercent(fulfillPercent);
-  document.getElementById("totalApiCost").textContent = formatMoney(totalApiCost);
-  document.getElementById("totalFulfillCost").textContent = formatMoney(totalFulfillCost);
-  document.getElementById("totalFixedCost").textContent = formatMoney(totalFixedCost);
+  const totalAdsSpendPct = safePercent(totals.totalAdsSpend, totals.totalSales);
+  const fbAdsSpendPct = safePercent(totals.fbAdsSpend, totals.totalAdsSpend);
+  const googleAdsSpendPct = safePercent(totals.googleAdsSpend, totals.totalAdsSpend);
+  const apiCostPct = safePercent(totals.apiCost, totals.totalSales);
+  const fulfillCostPct = safePercent(totals.fulfillCost, totals.totalSales);
+  const fixedCostPct = safePercent(totals.fixedCost, totals.totalSales);
 
-  document.getElementById("profit").className = totalProfit >= 0 ? "positive" : "negative";
+  setText("totalOrders", formatNumber(totals.totalOrders));
+  setText("totalSales", formatMoney(totals.totalSales));
+
+  setText("totalAdsSpend", formatMoney(totals.totalAdsSpend));
+  setText("totalAdsSpendPct", formatPercent(totalAdsSpendPct));
+
+  setText("fbAdsSpend", formatMoney(totals.fbAdsSpend));
+  setText("fbAdsSpendPct", formatPercent(fbAdsSpendPct));
+
+  setText("googleAdsSpend", formatMoney(totals.googleAdsSpend));
+  setText("googleAdsSpendPct", formatPercent(googleAdsSpendPct));
+
+  setText("aov", formatMoney(aov));
+  setText("roas", formatRoas(roas));
+
+  setText("apiCost", formatMoney(totals.apiCost));
+  setText("apiCostPct", formatPercent(apiCostPct));
+
+  setText("fulfillCost", formatMoney(totals.fulfillCost));
+  setText("fulfillCostPct", formatPercent(fulfillCostPct));
+
+  setText("fixedCost", formatMoney(totals.fixedCost));
+  setText("fixedCostPct", formatPercent(fixedCostPct));
+
+  setText("netProfit", formatMoney(totals.profit));
+
+  const profitElement = document.getElementById("netProfit");
+
+  if (profitElement) {
+    profitElement.className = totals.profit >= 0 ? "positive" : "negative";
+  }
 }
 
 function renderChart(data) {
@@ -208,22 +370,22 @@ function renderChart(data) {
   currentChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.map(row => row.date),
+      labels: data.map(row => row.dateText),
       datasets: [
         {
-          label: "Sales",
-          data: data.map(row => row.sales),
+          label: "Total Sales",
+          data: data.map(row => row.totalSales),
           tension: 0.35,
           borderWidth: 3
         },
         {
-          label: "Ads Spend",
-          data: data.map(row => row.ads),
+          label: "Total Ads Spend",
+          data: data.map(row => row.totalAdsSpend),
           tension: 0.35,
           borderWidth: 3
         },
         {
-          label: "Profit",
+          label: "Net Profit",
           data: data.map(row => row.profit),
           tension: 0.35,
           borderWidth: 3
@@ -267,16 +429,20 @@ function renderChart(data) {
 function renderTable(data) {
   const tbody = document.getElementById("dataTable");
 
+  if (!tbody) return;
+
   tbody.innerHTML = data.map(row => {
     const profitClass = row.profit >= 0 ? "positive" : "negative";
 
     return `
       <tr>
-        <td>${row.date}</td>
-        <td>${formatNumber(row.orders)}</td>
-        <td>${formatMoney(row.sales)}</td>
-        <td>${formatMoney(row.ads)}</td>
-        <td>${row.roas.toFixed(2)}x</td>
+        <td>${row.dateText}</td>
+        <td>${formatNumber(row.totalOrders)}</td>
+        <td>${formatMoney(row.totalSales)}</td>
+        <td>${formatMoney(row.fbAdsSpend)}</td>
+        <td>${formatMoney(row.googleAdsSpend)}</td>
+        <td>${formatMoney(row.totalAdsSpend)}</td>
+        <td>${formatRoas(row.roas)}</td>
         <td class="${profitClass}">${formatMoney(row.profit)}</td>
         <td>${formatMoney(row.apiCost)}</td>
         <td>${formatMoney(row.fulfillCost)}</td>
@@ -286,116 +452,125 @@ function renderTable(data) {
   }).join("");
 }
 
-function renderDashboard(data, label = "All data") {
+function renderDashboard(data, label) {
   updateKPIs(data);
   renderChart(data);
   renderTable(data);
 
-  document.getElementById("status").textContent = `Đã tải ${data.length} ngày dữ liệu`;
-  document.getElementById("rangeLabel").textContent = label;
+  setText("status", `Đã tải ${data.length} ngày dữ liệu`);
+  setText("rangeLabel", label);
 }
 
-function filterByRange(range) {
+function filterBetweenDates(startDate, endDate) {
+  const start = dateOnly(startDate);
+  const end = dateOnly(endDate);
+
+  return allData.filter(row => {
+    const current = dateOnly(row.dateObj);
+    return current >= start && current <= end;
+  });
+}
+
+function applyRange(range) {
   const latestDate = getLatestDate(allData);
 
-  if (!latestDate || range === "all") {
+  if (range === "all" || !latestDate) {
     renderDashboard(allData, "All data");
     return;
   }
 
-  let startDate;
-  const endDate = new Date(latestDate);
+  let startDate = latestDate;
+  let endDate = latestDate;
+  let label = "";
 
   if (range === "yesterday") {
-    startDate = new Date(latestDate);
+    startDate = latestDate;
+    endDate = latestDate;
+    label = `Yesterday: ${toInputDate(latestDate)}`;
   }
 
   if (range === "last3") {
-    startDate = new Date(latestDate);
-    startDate.setDate(startDate.getDate() - 2);
+    startDate = addDays(latestDate, -2);
+    endDate = latestDate;
+    label = `Last 3 days: ${toInputDate(startDate)} → ${toInputDate(endDate)}`;
   }
 
   if (range === "last7") {
-    startDate = new Date(latestDate);
-    startDate.setDate(startDate.getDate() - 6);
+    startDate = addDays(latestDate, -6);
+    endDate = latestDate;
+    label = `Last 7 days: ${toInputDate(startDate)} → ${toInputDate(endDate)}`;
   }
 
-  startDate = dateOnly(startDate);
+  const filteredData = filterBetweenDates(startDate, endDate);
 
-  const filtered = allData.filter(row => {
-    const rowDate = parseDate(row.date);
-    if (!rowDate) return false;
-
-    const current = dateOnly(rowDate);
-    return current >= startDate && current <= endDate;
-  });
-
-  const labelMap = {
-    yesterday: "Yesterday",
-    last3: "Last 3 days",
-    last7: "Last 7 days"
-  };
-
-  renderDashboard(filtered, labelMap[range]);
+  renderDashboard(filteredData, label);
 }
 
-function filterCustomRange() {
-  const startValue = document.getElementById("startDate").value;
-  const endValue = document.getElementById("endDate").value;
+function applyCustomRange() {
+  const fromValue = document.getElementById("fromDate").value;
+  const toValue = document.getElementById("toDate").value;
 
-  if (!startValue || !endValue) {
-    document.getElementById("status").textContent = "Vui lòng chọn đủ Start Date và End Date";
+  if (!fromValue || !toValue) {
+    setText("status", "Vui lòng chọn đủ From Date và To Date");
     return;
   }
 
-  const startDate = dateOnly(new Date(startValue));
-  const endDate = dateOnly(new Date(endValue));
+  const fromDate = parseDate(fromValue);
+  const toDate = parseDate(toValue);
 
-  const filtered = allData.filter(row => {
-    const rowDate = parseDate(row.date);
-    if (!rowDate) return false;
+  if (!fromDate || !toDate) {
+    setText("status", "Date không hợp lệ");
+    return;
+  }
 
-    const current = dateOnly(rowDate);
-    return current >= startDate && current <= endDate;
-  });
+  if (fromDate > toDate) {
+    setText("status", "From Date không được lớn hơn To Date");
+    return;
+  }
 
-  renderDashboard(filtered, `${startValue} → ${endValue}`);
+  const filteredData = filterBetweenDates(fromDate, toDate);
+
+  renderDashboard(filteredData, `Custom: ${fromValue} → ${toValue}`);
 }
 
 function setupFilters() {
-  const buttons = document.querySelectorAll(".filter-btn");
+  const timeRange = document.getElementById("timeRange");
   const customRange = document.getElementById("customRange");
+  const applyCustom = document.getElementById("applyCustom");
 
-  buttons.forEach(button => {
-    button.addEventListener("click", function() {
-      buttons.forEach(btn => btn.classList.remove("active"));
-      this.classList.add("active");
+  if (!timeRange || !customRange || !applyCustom) return;
 
-      const range = this.dataset.range;
+  timeRange.addEventListener("change", function() {
+    const selectedRange = this.value;
 
-      if (range === "custom") {
-        customRange.classList.add("show");
+    if (selectedRange === "custom") {
+      customRange.classList.add("show");
 
-        const latestDate = getLatestDate(allData);
-        if (latestDate) {
-          document.getElementById("startDate").value = formatDateInput(latestDate);
-          document.getElementById("endDate").value = formatDateInput(latestDate);
-        }
+      const latestDate = getLatestDate(allData);
 
-        return;
+      if (latestDate) {
+        const latestInputDate = toInputDate(latestDate);
+
+        document.getElementById("fromDate").value = latestInputDate;
+        document.getElementById("toDate").value = latestInputDate;
       }
 
-      customRange.classList.remove("show");
-      filterByRange(range);
-    });
+      setText("rangeLabel", "Custom: chọn From Date và To Date");
+      return;
+    }
+
+    customRange.classList.remove("show");
+    applyRange(selectedRange);
   });
 
-  document.getElementById("applyCustom").addEventListener("click", filterCustomRange);
+  applyCustom.addEventListener("click", applyCustomRange);
 }
 
 function findHeaderIndex(rows) {
   return rows.findIndex(row => {
-    const normalizedCells = row.map(cell => String(cell).trim().toLowerCase());
+    const normalizedCells = row.map(cell =>
+      normalizeHeader(cell).toLowerCase()
+    );
 
     return (
       normalizedCells.includes("date") &&
@@ -406,14 +581,16 @@ function findHeaderIndex(rows) {
 }
 
 function rowsToObjects(rows, headerIndex) {
-  const headers = rows[headerIndex].map(header => String(header).trim());
+  const headers = rows[headerIndex].map(header => normalizeHeader(header));
   const dataRows = rows.slice(headerIndex + 1);
 
   return dataRows.map(row => {
     const obj = {};
 
     headers.forEach((header, index) => {
-      obj[header] = row[index];
+      if (header) {
+        obj[header] = row[index];
+      }
     });
 
     return obj;
@@ -426,12 +603,14 @@ function loadData() {
     header: false,
     skipEmptyLines: true,
     complete: function(results) {
-      const rows = results.data;
+      const rows = results.data.filter(row =>
+        row.some(cell => String(cell || "").trim() !== "")
+      );
 
       const headerIndex = findHeaderIndex(rows);
 
       if (headerIndex === -1) {
-        document.getElementById("status").textContent = "Không tìm thấy dòng header: Date / Total Orders / Total Sales";
+        setText("status", "Không tìm thấy dòng header: Date / Total Orders / Total Sales");
         return;
       }
 
@@ -439,14 +618,15 @@ function loadData() {
 
       allData = rawData
         .map(normalizeRow)
-        .filter(isValidDataRow);
+        .filter(isValidDataRow)
+        .sort((a, b) => a.dateObj - b.dateObj);
 
-      renderDashboard(allData, "All data");
       setupFilters();
+      applyRange("all");
     },
     error: function(error) {
       console.error(error);
-      document.getElementById("status").textContent = "Lỗi tải dữ liệu";
+      setText("status", "Lỗi tải dữ liệu");
     }
   });
 }
