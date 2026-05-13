@@ -1,7 +1,7 @@
 "use strict";
 
 /*
-  Dán link Google Sheet published CSV vào đây.
+  Google Sheet published CSV.
 
   Dạng khuyến nghị:
   https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&single=true&output=csv
@@ -518,11 +518,22 @@ function updateKPIs(data) {
   const googleAdsSpendPct = safePercent(totals.googleAdsSpend, totals.totalAdsSpend);
   const apiCostPct = safePercent(totals.apiCost, totals.totalSales);
   const fulfillCostPct = safePercent(totals.fulfillCost, totals.totalSales);
-  const fixedCostPct = safePercent(totals.fixedCost, totals.totalSales);
 
+  /*
+    KPI dòng trên, không có %:
+    Total Orders, Total Sales, AOV, ROAS, Net Profit
+  */
   setText("totalOrders", formatNumber(totals.totalOrders));
   setText("totalSales", formatMoney(totals.totalSales));
+  setText("aov", formatMoney(aov));
+  setText("roas", formatRoas(roas));
+  setText("netProfit", formatMoney(totals.profit));
+  setToneClass("netProfit", totals.profit);
 
+  /*
+    KPI dòng dưới, có %:
+    Total Ads Spend, FB Ads Spend, Google Ads Spend, API Cost, Fulfill Cost
+  */
   setText("totalAdsSpend", formatMoney(totals.totalAdsSpend));
   setText("totalAdsSpendPct", formatPercent(totalAdsSpendPct));
 
@@ -532,20 +543,11 @@ function updateKPIs(data) {
   setText("googleAdsSpend", formatMoney(totals.googleAdsSpend));
   setText("googleAdsSpendPct", formatPercent(googleAdsSpendPct));
 
-  setText("aov", formatMoney(aov));
-  setText("roas", formatRoas(roas));
-
   setText("apiCost", formatMoney(totals.apiCost));
   setText("apiCostPct", formatPercent(apiCostPct));
 
   setText("fulfillCost", formatMoney(totals.fulfillCost));
   setText("fulfillCostPct", formatPercent(fulfillCostPct));
-
-  setText("fixedCost", formatMoney(totals.fixedCost));
-  setText("fixedCostPct", formatPercent(fixedCostPct));
-
-  setText("netProfit", formatMoney(totals.profit));
-  setToneClass("netProfit", totals.profit);
 }
 
 function renderChart(data) {
@@ -573,9 +575,9 @@ function renderChart(data) {
           borderColor: "#35d0ff",
           backgroundColor: "rgba(53, 208, 255, 0.12)",
           borderWidth: 3,
-          pointRadius: 3,
+          pointRadius: 2,
           pointHoverRadius: 5,
-          tension: 0.35,
+          tension: 0.32,
           fill: false
         },
         {
@@ -584,9 +586,9 @@ function renderChart(data) {
           borderColor: "#ffb84d",
           backgroundColor: "rgba(255, 184, 77, 0.12)",
           borderWidth: 3,
-          pointRadius: 3,
+          pointRadius: 2,
           pointHoverRadius: 5,
-          tension: 0.35,
+          tension: 0.32,
           fill: false
         },
         {
@@ -595,9 +597,9 @@ function renderChart(data) {
           borderColor: "#27e98f",
           backgroundColor: "rgba(39, 233, 143, 0.12)",
           borderWidth: 3,
-          pointRadius: 3,
+          pointRadius: 2,
           pointHoverRadius: 5,
-          tension: 0.35,
+          tension: 0.32,
           fill: false
         }
       ]
@@ -605,20 +607,28 @@ function renderChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      resizeDelay: 100,
       interaction: {
         mode: "index",
         intersect: false
       },
       plugins: {
         legend: {
+          position: "top",
           labels: {
             color: "#d9ecff",
             usePointStyle: true,
             boxWidth: 8,
-            boxHeight: 8
+            boxHeight: 8,
+            padding: 16
           }
         },
         tooltip: {
+          backgroundColor: "#08111f",
+          borderColor: "#244b7c",
+          borderWidth: 1,
+          titleColor: "#ffffff",
+          bodyColor: "#d9ecff",
           callbacks: {
             label: function(context) {
               return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
@@ -630,22 +640,26 @@ function renderChart(data) {
         x: {
           ticks: {
             color: "#7fa7d9",
-            maxRotation: 60,
-            minRotation: 45
+            autoSkip: true,
+            maxTicksLimit: 10,
+            maxRotation: 0,
+            minRotation: 0
           },
           grid: {
-            color: "#142945"
+            color: "rgba(20, 41, 69, 0.8)"
           }
         },
         y: {
+          beginAtZero: false,
           ticks: {
             color: "#7fa7d9",
+            maxTicksLimit: 8,
             callback: function(value) {
               return formatCompactMoney(value);
             }
           },
           grid: {
-            color: "#142945"
+            color: "rgba(20, 41, 69, 0.8)"
           }
         }
       }
@@ -910,7 +924,10 @@ function loadData() {
       const missingExpectedHeaders = getMissingHeaders(headers, EXPECTED_HEADERS);
 
       if (missingExpectedHeaders.length > 0) {
-        console.warn("Một số header không có trong CSV. Các chỉ số tương ứng sẽ về 0:", missingExpectedHeaders);
+        console.warn(
+          "Một số header không có trong CSV. Các chỉ số tương ứng sẽ về 0:",
+          missingExpectedHeaders
+        );
       }
 
       const normalizedRows = rawObjects.map(normalizeRow);
