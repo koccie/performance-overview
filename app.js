@@ -224,10 +224,6 @@ function parseDate(value) {
 
   if (!raw) return null;
 
-  /*
-    Google Sheets đôi khi export date serial number.
-    25569 = 1970-01-01 theo Excel/Google Sheets serial date.
-  */
   if (/^\d+(\.\d+)?$/.test(raw)) {
     const serialNumber = Number(raw);
 
@@ -243,12 +239,6 @@ function parseDate(value) {
     }
   }
 
-  /*
-    ISO-like:
-    2026-05-12
-    2026/05/12
-    2026.05.12
-  */
   const ymd = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
 
   if (ymd) {
@@ -259,14 +249,6 @@ function parseDate(value) {
     return makeDate(year, month, day);
   }
 
-  /*
-    Dạng:
-    05/12/2026
-    05-12-2026
-    05.12.2026
-
-    Nếu cả ngày và tháng đều <= 12 thì dùng DATE_FORMAT_PREFERENCE.
-  */
   const slashDate = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
 
   if (slashDate) {
@@ -294,11 +276,6 @@ function parseDate(value) {
     return makeDate(year, month, day);
   }
 
-  /*
-    Fallback cho các format như:
-    May 12, 2026
-    12 May 2026
-  */
   const fallback = new Date(raw);
 
   if (!Number.isNaN(fallback.getTime())) {
@@ -363,10 +340,6 @@ function findHeaderIndex(rows) {
     return -1;
   }
 
-  /*
-    Ưu tiên dòng có cột A = Date và có đủ core headers.
-    Nếu không thấy dòng đủ core headers thì fallback về dòng đầu tiên có cột A = Date.
-  */
   const strongCandidate = candidates.find(item =>
     CORE_HEADERS.every(header => rowHasHeader(item.row, header))
   );
@@ -422,10 +395,6 @@ function normalizeRow(row) {
   const totalAdsRaw = getValue(row, ["Total Ads Spend"]);
   let totalAdsSpend = cleanNumber(totalAdsRaw);
 
-  /*
-    Fallback: nếu Total Ads Spend trống hoặc bằng 0 nhưng FB/Google có số,
-    tự cộng FB Ads Spend + Google Ads Spend.
-  */
   if ((totalAdsRaw === "" || totalAdsSpend === 0) && (fbAdsSpend || googleAdsSpend)) {
     totalAdsSpend = fbAdsSpend + googleAdsSpend;
   }
@@ -518,10 +487,12 @@ function updateKPIs(data) {
   const googleAdsSpendPct = safePercent(totals.googleAdsSpend, totals.totalAdsSpend);
   const apiCostPct = safePercent(totals.apiCost, totals.totalSales);
   const fulfillCostPct = safePercent(totals.fulfillCost, totals.totalSales);
-  const fixedCostPct = safePercent(totals.fixedCost, totals.totalSales);
 
   setText("totalOrders", formatNumber(totals.totalOrders));
   setText("totalSales", formatMoney(totals.totalSales));
+  setText("aov", formatMoney(aov));
+  setText("roas", formatRoas(roas));
+  setText("netProfit", formatMoney(totals.profit));
 
   setText("totalAdsSpend", formatMoney(totals.totalAdsSpend));
   setText("totalAdsSpendPct", formatPercent(totalAdsSpendPct));
@@ -532,19 +503,12 @@ function updateKPIs(data) {
   setText("googleAdsSpend", formatMoney(totals.googleAdsSpend));
   setText("googleAdsSpendPct", formatPercent(googleAdsSpendPct));
 
-  setText("aov", formatMoney(aov));
-  setText("roas", formatRoas(roas));
-
   setText("apiCost", formatMoney(totals.apiCost));
   setText("apiCostPct", formatPercent(apiCostPct));
 
   setText("fulfillCost", formatMoney(totals.fulfillCost));
   setText("fulfillCostPct", formatPercent(fulfillCostPct));
 
-  setText("fixedCost", formatMoney(totals.fixedCost));
-  setText("fixedCostPct", formatPercent(fixedCostPct));
-
-  setText("netProfit", formatMoney(totals.profit));
   setToneClass("netProfit", totals.profit);
 }
 
