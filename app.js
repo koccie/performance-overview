@@ -160,10 +160,34 @@ function renderTable(data) {
 function loadData() {
   Papa.parse(CSV_URL, {
     download: true,
-    header: true,
+    header: false,
     skipEmptyLines: true,
     complete: function(results) {
-      const data = results.data
+      const rows = results.data;
+
+      const headerIndex = rows.findIndex(row =>
+        row.some(cell => String(cell).trim().toLowerCase() === "date")
+      );
+
+      if (headerIndex === -1) {
+        document.getElementById("status").textContent = "Không tìm thấy dòng header có cột Date";
+        return;
+      }
+
+      const headers = rows[headerIndex].map(header => String(header).trim());
+      const dataRows = rows.slice(headerIndex + 1);
+
+      const rawData = dataRows.map(row => {
+        const obj = {};
+
+        headers.forEach((header, index) => {
+          obj[header] = row[index];
+        });
+
+        return obj;
+      });
+
+      const data = rawData
         .map(normalizeRow)
         .filter(isValidDataRow);
 
