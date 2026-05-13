@@ -17,28 +17,40 @@
         <h1>📊 Koccie Performance Overview</h1>
         <p>Dashboard đọc dữ liệu tự động từ Google Sheets</p>
       </div>
+
       <div class="status" id="status">Đang tải dữ liệu...</div>
     </header>
 
     <section class="filter-card">
-      <div class="filter-header">
-        <div>
-          <h3>Time Range</h3>
-          <p id="rangeLabel">All data</p>
+      <div class="filter-row">
+        <div class="filter-field">
+          <label for="timeRange">Time Range</label>
+          <select id="timeRange">
+            <option value="all">All</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="last3">Last 3 days</option>
+            <option value="last7">Last 7 days</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+
+        <div class="range-label">
+          <span>Current Range</span>
+          <strong id="rangeLabel">All data</strong>
         </div>
       </div>
 
-      <div class="filter-actions">
-        <button class="filter-btn active" data-range="all">All</button>
-        <button class="filter-btn" data-range="yesterday">Yesterday</button>
-        <button class="filter-btn" data-range="last3">Last 3 days</button>
-        <button class="filter-btn" data-range="last7">Last 7 days</button>
-        <button class="filter-btn" data-range="custom">Custom</button>
-      </div>
-
       <div class="custom-range" id="customRange">
-        <input type="date" id="startDate" />
-        <input type="date" id="endDate" />
+        <div class="date-field">
+          <label for="fromDate">From Date</label>
+          <input type="date" id="fromDate" />
+        </div>
+
+        <div class="date-field">
+          <label for="toDate">To Date</label>
+          <input type="date" id="toDate" />
+        </div>
+
         <button id="applyCustom">Apply</button>
       </div>
     </section>
@@ -56,17 +68,20 @@
 
       <div class="card">
         <p>Total Ads Spend</p>
-        <h2 id="totalAds">-</h2>
+        <h2 id="totalAdsSpend">-</h2>
+        <span class="card-sub" id="totalAdsSpendPct">-</span>
       </div>
 
       <div class="card">
-        <p>ROAS</p>
-        <h2 id="roas">-</h2>
+        <p>FB Ads Spend</p>
+        <h2 id="fbAdsSpend">-</h2>
+        <span class="card-sub" id="fbAdsSpendPct">-</span>
       </div>
 
       <div class="card">
-        <p>Net Profit</p>
-        <h2 id="profit">-</h2>
+        <p>Google Ads Spend</p>
+        <h2 id="googleAdsSpend">-</h2>
+        <span class="card-sub" id="googleAdsSpendPct">-</span>
       </div>
 
       <div class="card">
@@ -75,33 +90,31 @@
       </div>
 
       <div class="card">
-        <p>% Ads / Sales</p>
-        <h2 id="adsPercent">-</h2>
+        <p>ROAS</p>
+        <h2 id="roas">-</h2>
       </div>
 
       <div class="card">
-        <p>% API Cost</p>
-        <h2 id="apiPercent">-</h2>
+        <p>API Cost</p>
+        <h2 id="apiCost">-</h2>
+        <span class="card-sub" id="apiCostPct">-</span>
       </div>
 
       <div class="card">
-        <p>% Fulfill Cost</p>
-        <h2 id="fulfillPercent">-</h2>
-      </div>
-
-      <div class="card">
-        <p>Total API Cost</p>
-        <h2 id="totalApiCost">-</h2>
-      </div>
-
-      <div class="card">
-        <p>Total Fulfill Cost</p>
-        <h2 id="totalFulfillCost">-</h2>
+        <p>Fulfill Cost</p>
+        <h2 id="fulfillCost">-</h2>
+        <span class="card-sub" id="fulfillCostPct">-</span>
       </div>
 
       <div class="card">
         <p>Fixed Cost</p>
-        <h2 id="totalFixedCost">-</h2>
+        <h2 id="fixedCost">-</h2>
+        <span class="card-sub" id="fixedCostPct">-</span>
+      </div>
+
+      <div class="card">
+        <p>Net Profit</p>
+        <h2 id="netProfit">-</h2>
       </div>
     </section>
 
@@ -112,14 +125,17 @@
 
     <section class="table-card">
       <h3>Daily Data</h3>
+
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Date</th>
-              <th>Orders</th>
-              <th>Sales</th>
-              <th>Ads Spend</th>
+              <th>Total Orders</th>
+              <th>Total Sales</th>
+              <th>FB Ads Spend</th>
+              <th>Google Ads Spend</th>
+              <th>Total Ads Spend</th>
               <th>ROAS</th>
               <th>Profit</th>
               <th>API Cost</th>
@@ -127,6 +143,7 @@
               <th>Fixed Cost</th>
             </tr>
           </thead>
+
           <tbody id="dataTable"></tbody>
         </table>
       </div>
