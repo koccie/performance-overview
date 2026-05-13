@@ -8,7 +8,7 @@
 
   Nếu lỡ dán dạng /pubhtml?... code sẽ cố tự chuyển sang /pub?...&output=csv
 */
-const CSV_URL = "DAN_LINK_CSV_CUA_BAN_VAO_DAY";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1575530320&single=true&output=csv";
 
 /*
   Khi ngày trong CSV có dạng mơ hồ như 05/12/2026:
