@@ -1,6 +1,5 @@
-
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,114 +11,116 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-  <div class="app">
+  <div class="page">
     <header class="header">
       <div>
-        <h1>📊 Koccie Performance Overview</h1>
-        <p>Dashboard đọc dữ liệu tự động từ Google Sheets</p>
+        <h1>
+          <span class="logo">📊</span>
+          Koccie Performance Overview
+        </h1>
       </div>
 
-      <div class="status" id="status">Đang tải dữ liệu...</div>
+      <div id="status" class="status-pill">Đang tải dữ liệu...</div>
     </header>
 
-    <section class="filter-card">
-      <div class="filter-row">
-        <div class="filter-field">
-          <label for="timeRange">Time Range</label>
-          <select id="timeRange">
-            <option value="all">All</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="last3">Last 3 days</option>
-            <option value="last7">Last 7 days</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
+    <section class="controls-card">
+      <div class="control-left">
+        <label for="timeRange">Time Range</label>
+        <select id="timeRange">
+          <option value="all">All</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="last3">Last 3 days</option>
+          <option value="last7">Last 7 days</option>
+          <option value="custom">Custom</option>
+        </select>
 
-        <div class="range-label">
-          <span>Current Range</span>
-          <strong id="rangeLabel">All data</strong>
+        <div id="customRange" class="custom-range">
+          <div class="date-field">
+            <label for="fromDate">From Date</label>
+            <input type="date" id="fromDate" />
+          </div>
+
+          <div class="date-field">
+            <label for="toDate">To Date</label>
+            <input type="date" id="toDate" />
+          </div>
+
+          <button id="applyCustom" type="button">Apply</button>
         </div>
       </div>
 
-      <div class="custom-range" id="customRange">
-        <div class="date-field">
-          <label for="fromDate">From Date</label>
-          <input type="date" id="fromDate" />
-        </div>
-
-        <div class="date-field">
-          <label for="toDate">To Date</label>
-          <input type="date" id="toDate" />
-        </div>
-
-        <button id="applyCustom">Apply</button>
+      <div class="range-info">
+        <span>Current Range</span>
+        <strong id="rangeLabel">All data</strong>
       </div>
     </section>
 
     <section class="kpi-grid">
-      <div class="card">
-        <p>Total Orders</p>
-        <h2 id="totalOrders">-</h2>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">Total Orders</div>
+        <div id="totalOrders" class="kpi-value">-</div>
+      </article>
 
-      <div class="card">
-        <p>Total Sales</p>
-        <h2 id="totalSales">-</h2>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">Total Sales</div>
+        <div id="totalSales" class="kpi-value">-</div>
+      </article>
 
-      <div class="card">
-        <p>Total Ads Spend</p>
-        <h2 id="totalAdsSpend">-</h2>
-        <span class="card-sub" id="totalAdsSpendPct">-</span>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">AOV</div>
+        <div id="aov" class="kpi-value">-</div>
+      </article>
 
-      <div class="card">
-        <p>FB Ads Spend</p>
-        <h2 id="fbAdsSpend">-</h2>
-        <span class="card-sub" id="fbAdsSpendPct">-</span>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">ROAS</div>
+        <div id="roas" class="kpi-value">-</div>
+      </article>
 
-      <div class="card">
-        <p>Google Ads Spend</p>
-        <h2 id="googleAdsSpend">-</h2>
-        <span class="card-sub" id="googleAdsSpendPct">-</span>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">Net Profit</div>
+        <div id="netProfit" class="kpi-value">-</div>
+      </article>
 
-      <div class="card">
-        <p>AOV</p>
-        <h2 id="aov">-</h2>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">Total Ads Spend</div>
+        <div id="totalAdsSpend" class="kpi-value">-</div>
+        <div id="totalAdsSpendPct" class="kpi-sub">-</div>
+      </article>
 
-      <div class="card">
-        <p>ROAS</p>
-        <h2 id="roas">-</h2>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">FB Ads Spend</div>
+        <div id="fbAdsSpend" class="kpi-value">-</div>
+        <div id="fbAdsSpendPct" class="kpi-sub">-</div>
+      </article>
 
-      <div class="card">
-        <p>API Cost</p>
-        <h2 id="apiCost">-</h2>
-        <span class="card-sub" id="apiCostPct">-</span>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">Google Ads Spend</div>
+        <div id="googleAdsSpend" class="kpi-value">-</div>
+        <div id="googleAdsSpendPct" class="kpi-sub">-</div>
+      </article>
 
-      <div class="card">
-        <p>Fulfill Cost</p>
-        <h2 id="fulfillCost">-</h2>
-        <span class="card-sub" id="fulfillCostPct">-</span>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-title">API Cost</div>
+        <div id="apiCost" class="kpi-value">-</div>
+        <div id="apiCostPct" class="kpi-sub">-</div>
+      </article>
 
-      <div class="card">
-        <p>Net Profit</p>
-        <h2 id="netProfit">-</h2>
+      <article class="kpi-card">
+        <div class="kpi-title">Fulfill Cost</div>
+        <div id="fulfillCost" class="kpi-value">-</div>
+        <div id="fulfillCostPct" class="kpi-sub">-</div>
+      </article>
+    </section>
+
+    <section class="panel chart-panel">
+      <h2>Daily Performance</h2>
+      <div class="chart-wrap">
+        <canvas id="performanceChart"></canvas>
       </div>
     </section>
 
-    <section class="chart-card">
-      <h3>Daily Performance</h3>
-      <canvas id="performanceChart"></canvas>
-    </section>
-
-    <section class="table-card">
-      <h3>Daily Data</h3>
+    <section class="panel table-panel">
+      <h2>Daily Data</h2>
 
       <div class="table-wrap">
         <table>
@@ -138,13 +139,16 @@
               <th>Fixed Cost</th>
             </tr>
           </thead>
-
-          <tbody id="dataTable"></tbody>
+          <tbody id="dataTable">
+            <tr>
+              <td colspan="11" class="empty-row">Đang tải dữ liệu...</td>
+            </tr>
+          </tbody>
         </table>
       </div>
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
