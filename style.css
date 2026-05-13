@@ -11,7 +11,7 @@ body {
 
 .app {
   padding: 24px;
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
 }
 
@@ -42,15 +42,10 @@ body {
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 14px;
+  white-space: nowrap;
 }
 
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(140px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
+.filter-card,
 .card,
 .chart-card,
 .table-card {
@@ -58,6 +53,82 @@ body {
   border: 1px solid #1f4169;
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.filter-card {
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.filter-header h3 {
+  margin: 0;
+  color: #b8d7ff;
+  font-size: 16px;
+}
+
+.filter-header p {
+  margin: 6px 0 0;
+  color: #7fa7d9;
+  font-size: 13px;
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-btn,
+.custom-range button {
+  background: #10233d;
+  border: 1px solid #244b7c;
+  color: #b8d7ff;
+  padding: 9px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.filter-btn.active,
+.filter-btn:hover,
+.custom-range button:hover {
+  background: #1f6feb;
+  border-color: #58a6ff;
+  color: #ffffff;
+}
+
+.custom-range {
+  display: none;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.custom-range.show {
+  display: flex;
+}
+
+.custom-range input {
+  background: #08111f;
+  border: 1px solid #244b7c;
+  color: #e5f0ff;
+  padding: 9px 12px;
+  border-radius: 10px;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .card {
@@ -96,7 +167,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 760px;
+  min-width: 980px;
 }
 
 th,
@@ -120,22 +191,30 @@ th {
 }
 
 .positive {
-  color: #39d98a;
+  color: #39d98a !important;
   font-weight: 700;
 }
 
 .negative {
-  color: #ff5c7a;
+  color: #ff5c7a !important;
   font-weight: 700;
 }
 
-@media (max-width: 1100px) {
-  .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 900px) {
+  .app {
+    padding: 16px;
   }
 
   .header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card h2 {
+    font-size: 20px;
   }
 }
