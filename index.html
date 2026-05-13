@@ -20,6 +20,29 @@
       <div class="status" id="status">Đang tải dữ liệu...</div>
     </header>
 
+    <section class="filter-card">
+      <div class="filter-header">
+        <div>
+          <h3>Time Range</h3>
+          <p id="rangeLabel">All data</p>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button class="filter-btn active" data-range="all">All</button>
+        <button class="filter-btn" data-range="yesterday">Yesterday</button>
+        <button class="filter-btn" data-range="last3">Last 3 days</button>
+        <button class="filter-btn" data-range="last7">Last 7 days</button>
+        <button class="filter-btn" data-range="custom">Custom</button>
+      </div>
+
+      <div class="custom-range" id="customRange">
+        <input type="date" id="startDate" />
+        <input type="date" id="endDate" />
+        <button id="applyCustom">Apply</button>
+      </div>
+    </section>
+
     <section class="kpi-grid">
       <div class="card">
         <p>Total Orders</p>
@@ -55,6 +78,31 @@
         <p>% Ads / Sales</p>
         <h2 id="adsPercent">-</h2>
       </div>
+
+      <div class="card">
+        <p>% API Cost</p>
+        <h2 id="apiPercent">-</h2>
+      </div>
+
+      <div class="card">
+        <p>% Fulfill Cost</p>
+        <h2 id="fulfillPercent">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Total API Cost</p>
+        <h2 id="totalApiCost">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Total Fulfill Cost</p>
+        <h2 id="totalFulfillCost">-</h2>
+      </div>
+
+      <div class="card">
+        <p>Fixed Cost</p>
+        <h2 id="totalFixedCost">-</h2>
+      </div>
     </section>
 
     <section class="chart-card">
@@ -74,6 +122,9 @@
               <th>Ads Spend</th>
               <th>ROAS</th>
               <th>Profit</th>
+              <th>API Cost</th>
+              <th>Fulfill Cost</th>
+              <th>Fixed Cost</th>
             </tr>
           </thead>
           <tbody id="dataTable"></tbody>
