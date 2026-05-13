@@ -52,7 +52,7 @@ body {
   background: #0d1d33;
   border: 1px solid #1f4169;
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
 
 .filter-card {
@@ -60,79 +60,98 @@ body {
   margin-bottom: 20px;
 }
 
-.filter-header {
+.filter-row {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 14px;
+  gap: 18px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
-.filter-header h3 {
-  margin: 0;
-  color: #b8d7ff;
-  font-size: 16px;
+.filter-field,
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.filter-header p {
-  margin: 6px 0 0;
+.filter-field label,
+.date-field label {
   color: #7fa7d9;
   font-size: 13px;
+  font-weight: 700;
 }
 
-.filter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.filter-btn,
-.custom-range button {
-  background: #10233d;
+select,
+input[type="date"] {
+  min-width: 220px;
+  background: #08111f;
   border: 1px solid #244b7c;
-  color: #b8d7ff;
-  padding: 9px 14px;
+  color: #e5f0ff;
+  padding: 11px 12px;
   border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
+  font-size: 14px;
+  outline: none;
 }
 
-.filter-btn.active,
-.filter-btn:hover,
-.custom-range button:hover {
-  background: #1f6feb;
+select:focus,
+input[type="date"]:focus {
   border-color: #58a6ff;
-  color: #ffffff;
+}
+
+.range-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: right;
+}
+
+.range-label span {
+  color: #7fa7d9;
+  font-size: 12px;
+}
+
+.range-label strong {
+  color: #39d98a;
+  font-size: 15px;
 }
 
 .custom-range {
   display: none;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 16px;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
 .custom-range.show {
   display: flex;
 }
 
-.custom-range input {
-  background: #08111f;
-  border: 1px solid #244b7c;
-  color: #e5f0ff;
-  padding: 9px 12px;
+.custom-range button {
+  background: #1f6feb;
+  border: 1px solid #58a6ff;
+  color: #ffffff;
+  padding: 11px 16px;
   border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.custom-range button:hover {
+  filter: brightness(1.1);
 }
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
 
 .card {
   padding: 16px;
+  min-height: 104px;
 }
 
 .card p {
@@ -145,6 +164,15 @@ body {
   margin: 0;
   font-size: 24px;
   color: #39d98a;
+  line-height: 1.15;
+}
+
+.card-sub {
+  display: block;
+  margin-top: 7px;
+  color: #9bbbe9;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .chart-card,
@@ -167,7 +195,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: 1180px;
 }
 
 th,
@@ -210,11 +238,21 @@ th {
     align-items: flex-start;
   }
 
+  .range-label {
+    text-align: left;
+  }
+
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .card h2 {
     font-size: 20px;
+  }
+
+  select,
+  input[type="date"] {
+    min-width: 100%;
+    width: 100%;
   }
 }
