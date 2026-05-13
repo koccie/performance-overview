@@ -1,19 +1,47 @@
+:root {
+  --bg: #08111f;
+  --panel: #0d1d33;
+  --panel-dark: #08111f;
+  --panel-soft: #10233d;
+  --border: #1f4169;
+  --border-soft: #1d3759;
+  --border-bright: #244b7c;
+  --text: #e5f0ff;
+  --muted: #7fa7d9;
+  --muted-bright: #9bbbe9;
+  --title: #ffffff;
+  --blue: #71d6ff;
+  --blue-strong: #58a6ff;
+  --green: #39d98a;
+  --red: #ff5c7a;
+  --shadow: rgba(0, 0, 0, 0.22);
+}
+
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
   font-family: Arial, sans-serif;
-  background: #08111f;
-  color: #e5f0ff;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 .app {
-  padding: 24px;
+  width: 100%;
   max-width: 1500px;
   margin: 0 auto;
+  padding: 24px;
 }
+
+/* Header */
 
 .header {
   display: flex;
@@ -21,39 +49,48 @@ body {
   gap: 20px;
   align-items: center;
   margin-bottom: 24px;
-  border-bottom: 1px solid #1c3558;
   padding-bottom: 18px;
+  border-bottom: 1px solid #1c3558;
 }
 
 .header h1 {
   margin: 0;
+  color: var(--title);
   font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
+/* Nếu trong index.html vẫn còn subtitle thì ẩn đi */
 .header p {
-  margin: 8px 0 0;
-  color: #7fa7d9;
+  display: none;
 }
 
 .status {
-  background: #10233d;
-  border: 1px solid #244b7c;
-  color: #71d6ff;
+  flex-shrink: 0;
+  max-width: 100%;
   padding: 10px 14px;
+  border: 1px solid var(--border-bright);
   border-radius: 10px;
+  background: var(--panel-soft);
+  color: var(--blue);
   font-size: 14px;
   white-space: nowrap;
 }
+
+/* Shared cards */
 
 .filter-card,
 .card,
 .chart-card,
 .table-card {
-  background: #0d1d33;
-  border: 1px solid #1f4169;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 30px var(--shadow);
 }
+
+/* Filter */
 
 .filter-card {
   padding: 16px;
@@ -77,7 +114,7 @@ body {
 
 .filter-field label,
 .date-field label {
-  color: #7fa7d9;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -85,18 +122,20 @@ body {
 select,
 input[type="date"] {
   min-width: 220px;
-  background: #08111f;
-  border: 1px solid #244b7c;
-  color: #e5f0ff;
-  padding: 11px 12px;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid var(--border-bright);
   border-radius: 10px;
+  background: var(--panel-dark);
+  color: var(--text);
   font-size: 14px;
   outline: none;
 }
 
 select:focus,
 input[type="date"]:focus {
-  border-color: #58a6ff;
+  border-color: var(--blue-strong);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
 }
 
 .range-label {
@@ -107,12 +146,12 @@ input[type="date"]:focus {
 }
 
 .range-label span {
-  color: #7fa7d9;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .range-label strong {
-  color: #39d98a;
+  color: var(--green);
   font-size: 15px;
 }
 
@@ -129,11 +168,12 @@ input[type="date"]:focus {
 }
 
 .custom-range button {
-  background: #1f6feb;
-  border: 1px solid #58a6ff;
-  color: #ffffff;
-  padding: 11px 16px;
+  height: 43px;
+  padding: 0 16px;
+  border: 1px solid var(--blue-strong);
   border-radius: 10px;
+  background: #1f6feb;
+  color: #ffffff;
   cursor: pointer;
   font-weight: 700;
 }
@@ -142,38 +182,52 @@ input[type="date"]:focus {
   filter: brightness(1.1);
 }
 
+/* KPI cards */
+
+/*
+  Desktop: cố định 5 ô mỗi dòng.
+  Với 10 KPI cards sẽ thành đúng 2 dòng x 5 ô.
+*/
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
 
 .card {
-  padding: 16px;
+  min-width: 0;
   min-height: 104px;
+  padding: 16px;
 }
 
 .card p {
   margin: 0 0 8px;
-  color: #7fa7d9;
+  color: var(--muted);
   font-size: 13px;
+  line-height: 1.25;
 }
 
 .card h2 {
   margin: 0;
+  color: var(--green);
   font-size: 24px;
-  color: #39d98a;
+  font-weight: 800;
   line-height: 1.15;
+  letter-spacing: 0.2px;
+  overflow-wrap: anywhere;
 }
 
 .card-sub {
   display: block;
   margin-top: 7px;
-  color: #9bbbe9;
+  color: var(--muted-bright);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
 }
+
+/* Chart */
 
 .chart-card,
 .table-card {
@@ -184,26 +238,69 @@ input[type="date"]:focus {
 .chart-card h3,
 .table-card h3 {
   margin: 0 0 16px;
-  font-size: 16px;
   color: #b8d7ff;
+  font-size: 16px;
+  font-weight: 800;
 }
 
+/*
+  Phần quan trọng để chart không bị cao quá / vỡ khung.
+  Canvas sẽ bị khóa theo chiều cao của container.
+*/
+.chart-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/*
+  Nếu index.html của bạn có div bọc canvas class="chart-wrap",
+  rule này sẽ kiểm soát chiều cao chart.
+*/
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  max-height: 360px;
+  overflow: hidden;
+}
+
+/*
+  Nếu index.html KHÔNG có .chart-wrap mà canvas nằm trực tiếp trong .chart-card,
+  rule này vẫn ép canvas về chiều cao hợp lý.
+*/
+.chart-card > canvas {
+  height: 360px !important;
+  max-height: 360px !important;
+}
+
+/* Table */
+
 .table-wrap {
+  width: 100%;
   overflow-x: auto;
+  border-radius: 10px;
 }
 
 table {
   width: 100%;
-  border-collapse: collapse;
   min-width: 1180px;
+  border-collapse: collapse;
 }
 
 th,
 td {
   padding: 12px;
-  border-bottom: 1px solid #1d3759;
+  border-bottom: 1px solid var(--border-soft);
   text-align: right;
+  color: var(--text);
   font-size: 14px;
+  white-space: nowrap;
 }
 
 th:first-child,
@@ -212,20 +309,51 @@ td:first-child {
 }
 
 th {
-  color: #7fa7d9;
+  background: var(--panel-soft);
+  color: var(--muted);
   font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
-  background: #10233d;
 }
 
+tr:hover td {
+  background: rgba(113, 214, 255, 0.04);
+}
+
+.empty-row {
+  text-align: center !important;
+  color: var(--muted);
+  padding: 22px;
+}
+
+/* Positive / Negative */
+
 .positive {
-  color: #39d98a !important;
+  color: var(--green) !important;
   font-weight: 700;
 }
 
 .negative {
-  color: #ff5c7a !important;
+  color: var(--red) !important;
   font-weight: 700;
+}
+
+/* Responsive */
+
+@media (max-width: 1200px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chart-wrap {
+    height: 340px;
+    max-height: 340px;
+  }
+
+  .chart-card > canvas {
+    height: 340px !important;
+    max-height: 340px !important;
+  }
 }
 
 @media (max-width: 900px) {
@@ -238,12 +366,20 @@ th {
     align-items: flex-start;
   }
 
+  .status {
+    white-space: normal;
+  }
+
+  .filter-row {
+    align-items: stretch;
+  }
+
   .range-label {
     text-align: left;
   }
 
   .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .card h2 {
@@ -254,5 +390,52 @@ th {
   input[type="date"] {
     min-width: 100%;
     width: 100%;
+  }
+
+  .chart-wrap {
+    height: 320px;
+    max-height: 320px;
+  }
+
+  .chart-card > canvas {
+    height: 320px !important;
+    max-height: 320px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .app {
+    padding: 14px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-card,
+  .card,
+  .chart-card,
+  .table-card {
+    border-radius: 12px;
+  }
+
+  .chart-wrap {
+    height: 280px;
+    max-height: 280px;
+  }
+
+  .chart-card > canvas {
+    height: 280px !important;
+    max-height: 280px !important;
+  }
+
+  th,
+  td {
+    padding: 10px;
+    font-size: 13px;
   }
 }
