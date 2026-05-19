@@ -18,7 +18,7 @@ const REPORT_SOURCES = {
   },
   market: {
     label: "Market",
-    csvUrl: "DAN_LINK_CSV_REPORT_MARKET_VAO_DAY"
+    csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1730682205&single=true&output=csv"
   }
 };
 
