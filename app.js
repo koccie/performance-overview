@@ -2,13 +2,13 @@
 
 /*
   Koccie Performance Overview
-  - Overview đọc CSV từ sheet Overview hiện tại.
-  - Market đọc CSV từ sheet Report_Market.
 
-  Việc cần làm sau khi paste code này:
-  1. Thay MARKET_CSV_URL bằng link CSV publish riêng của sheet Report_Market.
-  2. Trong index.html nên có container <div id="marketView"></div> nếu muốn chủ động vị trí hiển thị.
-     Nếu chưa có, app.js sẽ tự tạo marketView ở cuối trang.
+  File này hỗ trợ 2 tab:
+  - Overview: đọc CSV từ sheet Overview hiện tại.
+  - Market: đọc CSV từ sheet Report_Market.
+
+  Việc cần làm:
+  - Thay MARKET_CSV_URL bằng link CSV publish riêng của sheet Report_Market.
 */
 
 const REPORT_SOURCES = {
@@ -18,7 +18,7 @@ const REPORT_SOURCES = {
   },
   market: {
     label: "Market",
-    csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1730682205&single=true&output=csv"
+    csvUrl: "DAN_LINK_CSV_REPORT_MARKET_VAO_DAY"
   }
 };
 
@@ -67,14 +67,17 @@ const EXPECTED_HEADERS_BY_REPORT = {
 };
 
 let activeReport = "overview";
+
 let reportData = {
   overview: [],
   market: []
 };
+
 let reportLoaded = {
   overview: false,
   market: false
 };
+
 let currentChart = null;
 let marketCharts = {};
 let filtersInitialized = false;
@@ -267,6 +270,7 @@ function parseDate(value) {
 
   if (!raw) return null;
 
+  /* Google Sheets đôi khi export date serial number. */
   if (/^\d+(\.\d+)?$/.test(raw)) {
     const serialNumber = Number(raw);
 
@@ -282,6 +286,7 @@ function parseDate(value) {
     }
   }
 
+  /* ISO-like: 2026-05-12, 2026/05/12, 2026.05.12 */
   const ymd = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
 
   if (ymd) {
@@ -292,6 +297,7 @@ function parseDate(value) {
     return makeDate(year, month, day);
   }
 
+  /* Dạng 05/12/2026, 05-12-2026, 05.12.2026 */
   const slashDate = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
 
   if (slashDate) {
@@ -482,9 +488,24 @@ function normalizeMarketRow(row) {
   const totalSales = cleanNumber(getValue(row, ["Total Sales"]));
   const aovRaw = cleanNumber(getValue(row, ["AOV"]));
   const itemsSold = cleanNumber(getValue(row, ["Items Sold"]));
-  const totalAdsSpend = cleanNumber(getValue(row, ["Total Ad spent", "Total Ads Spend", "Total Ads spent"]));
-  const fbAdsSpend = cleanNumber(getValue(row, ["FB Ad spent", "FB Ads Spend", "FB Ads spent"]));
-  const ggAdsSpend = cleanNumber(getValue(row, ["GG Ad spent", "Google Ads Spend", "GG Ads Spend"]));
+
+  const totalAdsSpend = cleanNumber(getValue(row, [
+    "Total Ad spent",
+    "Total Ads Spend",
+    "Total Ads spent"
+  ]));
+
+  const fbAdsSpend = cleanNumber(getValue(row, [
+    "FB Ad spent",
+    "FB Ads Spend",
+    "FB Ads spent"
+  ]));
+
+  const ggAdsSpend = cleanNumber(getValue(row, [
+    "GG Ad spent",
+    "Google Ads Spend",
+    "GG Ads Spend"
+  ]));
 
   return {
     rawDateText,
@@ -665,64 +686,6 @@ function updateOverviewKPIs(data) {
   setText("fulfillCostPct", formatPercent(fulfillCostPct));
 }
 
-function renderOverviewChart(data) {
-  const canvas = document.getElementById("performanceChart");
-
-  if (!canvas) return;
-
-  if (typeof Chart === "undefined") {
-    setText("status", "Chart.js chưa được load");
-    return;
-  }
-
-  if (currentChart) {
-    currentChart.destroy();
-  }
-
-  currentChart = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels: data.map(row => row.dateText),
-      datasets: [
-        {
-          label: "Total Sales",
-          data: data.map(row => row.totalSales),
-          borderColor: "#35d0ff",
-          backgroundColor: "rgba(53, 208, 255, 0.12)",
-          borderWidth: 3,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          tension: 0.32,
-          fill: false
-        },
-        {
-          label: "Total Ads Spend",
-          data: data.map(row => row.totalAdsSpend),
-          borderColor: "#ffb84d",
-          backgroundColor: "rgba(255, 184, 77, 0.12)",
-          borderWidth: 3,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          tension: 0.32,
-          fill: false
-        },
-        {
-          label: "Net Profit",
-          data: data.map(row => row.profit),
-          borderColor: "#27e98f",
-          backgroundColor: "rgba(39, 233, 143, 0.12)",
-          borderWidth: 3,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          tension: 0.32,
-          fill: false
-        }
-      ]
-    },
-    options: getLineChartOptions()
-  });
-}
-
 function getLineChartOptions() {
   return {
     responsive: true,
@@ -803,7 +766,7 @@ function getBarMoneyOptions(stacked) {
           usePointStyle: true,
           boxWidth: 8,
           boxHeight: 8,
-          padding: 16
+          padding: 12
         }
       },
       tooltip: {
@@ -859,7 +822,7 @@ function getBarRoasOptions() {
           usePointStyle: true,
           boxWidth: 8,
           boxHeight: 8,
-          padding: 16
+          padding: 12
         }
       },
       tooltip: {
@@ -870,7 +833,8 @@ function getBarRoasOptions() {
         bodyColor: "#d9ecff",
         callbacks: {
           label: function(context) {
-            return `${context.dataset.label}: ${formatRoas(context.parsed.y)}`;
+            const parsedValue = context.parsed.y;
+            return `${context.dataset.label}: ${formatRoas(parsedValue)}`;
           }
         }
       }
@@ -898,6 +862,102 @@ function getBarRoasOptions() {
       }
     }
   };
+}
+
+function getDoughnutMoneyOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "58%",
+    plugins: {
+      legend: {
+        position: "right",
+        labels: {
+          color: "#d9ecff",
+          usePointStyle: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 14
+        }
+      },
+      tooltip: {
+        backgroundColor: "#08111f",
+        borderColor: "#244b7c",
+        borderWidth: 1,
+        titleColor: "#ffffff",
+        bodyColor: "#d9ecff",
+        callbacks: {
+          label: function(context) {
+            const dataset = context.dataset || {};
+            const values = dataset.data || [];
+            const total = values.reduce((sum, value) => sum + (Number(value) || 0), 0);
+            const value = Number(context.parsed) || 0;
+            const pct = total > 0 ? (value / total) * 100 : 0;
+
+            return `${context.label}: ${formatMoney(value)} (${pct.toFixed(1)}%)`;
+          }
+        }
+      }
+    }
+  };
+}
+
+function renderOverviewChart(data) {
+  const canvas = document.getElementById("performanceChart");
+
+  if (!canvas) return;
+
+  if (typeof Chart === "undefined") {
+    setText("status", "Chart.js chưa được load");
+    return;
+  }
+
+  if (currentChart) {
+    currentChart.destroy();
+  }
+
+  currentChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: data.map(row => row.dateText),
+      datasets: [
+        {
+          label: "Total Sales",
+          data: data.map(row => row.totalSales),
+          borderColor: "#35d0ff",
+          backgroundColor: "rgba(53, 208, 255, 0.12)",
+          borderWidth: 3,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          tension: 0.32,
+          fill: false
+        },
+        {
+          label: "Total Ads Spend",
+          data: data.map(row => row.totalAdsSpend),
+          borderColor: "#ffb84d",
+          backgroundColor: "rgba(255, 184, 77, 0.12)",
+          borderWidth: 3,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          tension: 0.32,
+          fill: false
+        },
+        {
+          label: "Net Profit",
+          data: data.map(row => row.profit),
+          borderColor: "#27e98f",
+          backgroundColor: "rgba(39, 233, 143, 0.12)",
+          borderWidth: 3,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          tension: 0.32,
+          fill: false
+        }
+      ]
+    },
+    options: getLineChartOptions()
+  });
 }
 
 function renderOverviewTable(data) {
@@ -976,23 +1036,52 @@ function ensureMarketView() {
           <h2>Market Performance</h2>
           <p>So sánh doanh thu, ads spend và ROAS theo từng thị trường.</p>
         </div>
-        <div class="market-note">Lưu ý: Google Ads hiện chỉ chạy ở FR. BEL và SWIZ sẽ hiển thị ROAS GG là N/A nếu không có spend.</div>
+        <div class="market-note">
+          Google Ads hiện chỉ chạy ở FR. BEL và SWIZ sẽ hiển thị ROAS GG là N/A nếu không có spend.
+        </div>
       </div>
 
       <div class="kpi-grid market-kpis">
-        <div class="kpi-card"><span>Total Sales</span><strong id="marketTotalSales">$ 0.00</strong></div>
-        <div class="kpi-card"><span>Total Orders</span><strong id="marketTotalOrders">0</strong></div>
-        <div class="kpi-card"><span>Total Ads Spend</span><strong id="marketTotalAdsSpend">$ 0.00</strong><small id="marketTotalAdsSpendPct">% 0.0</small></div>
-        <div class="kpi-card"><span>FB Ads Spend</span><strong id="marketFbAdsSpend">$ 0.00</strong><small id="marketFbAdsSpendPct">% 0.0</small></div>
-        <div class="kpi-card"><span>GG Ads Spend</span><strong id="marketGgAdsSpend">$ 0.00</strong><small id="marketGgAdsSpendPct">% 0.0</small></div>
-        <div class="kpi-card"><span>ROAS</span><strong id="marketRoas">0.00x</strong></div>
-        <div class="kpi-card"><span>AOV</span><strong id="marketAov">$ 0.00</strong></div>
-        <div class="kpi-card"><span>Items Sold</span><strong id="marketItemsSold">0</strong></div>
+        <div class="kpi-card">
+          <span>Total Sales</span>
+          <strong id="marketTotalSales">$ 0.00</strong>
+        </div>
+        <div class="kpi-card">
+          <span>Total Orders</span>
+          <strong id="marketTotalOrders">0</strong>
+        </div>
+        <div class="kpi-card">
+          <span>Total Ads Spend</span>
+          <strong id="marketTotalAdsSpend">$ 0.00</strong>
+          <small id="marketTotalAdsSpendPct">% 0.0</small>
+        </div>
+        <div class="kpi-card">
+          <span>FB Ads Spend</span>
+          <strong id="marketFbAdsSpend">$ 0.00</strong>
+          <small id="marketFbAdsSpendPct">% 0.0</small>
+        </div>
+        <div class="kpi-card">
+          <span>GG Ads Spend</span>
+          <strong id="marketGgAdsSpend">$ 0.00</strong>
+          <small id="marketGgAdsSpendPct">% 0.0</small>
+        </div>
+        <div class="kpi-card">
+          <span>ROAS</span>
+          <strong id="marketRoas">0.00x</strong>
+        </div>
+        <div class="kpi-card">
+          <span>AOV</span>
+          <strong id="marketAov">$ 0.00</strong>
+        </div>
+        <div class="kpi-card">
+          <span>Items Sold</span>
+          <strong id="marketItemsSold">0</strong>
+        </div>
       </div>
 
       <div class="chart-grid market-chart-grid">
         <section class="chart-card">
-          <h3>Sales by Market</h3>
+          <h3>Sales Share by Market</h3>
           <div class="chart-box"><canvas id="marketSalesChart"></canvas></div>
         </section>
         <section class="chart-card">
@@ -1077,20 +1166,26 @@ function renderMarketCharts(summaryRows) {
   const labels = summaryRows.map(row => row.market);
 
   createOrReplaceChart("sales", "marketSalesChart", {
-    type: "bar",
+    type: "doughnut",
     data: {
       labels,
       datasets: [
         {
           label: "Total Sales",
           data: summaryRows.map(row => row.totalSales),
-          backgroundColor: "rgba(53, 208, 255, 0.65)",
-          borderColor: "#35d0ff",
-          borderWidth: 1
+          backgroundColor: [
+            "rgba(53, 208, 255, 0.72)",
+            "rgba(39, 233, 143, 0.72)",
+            "rgba(255, 184, 77, 0.72)",
+            "rgba(159, 124, 255, 0.72)",
+            "rgba(255, 92, 122, 0.72)"
+          ],
+          borderColor: "#0d1d33",
+          borderWidth: 2
         }
       ]
     },
-    options: getBarMoneyOptions(false)
+    options: getDoughnutMoneyOptions()
   });
 
   createOrReplaceChart("roas", "marketRoasChart", {
@@ -1114,7 +1209,7 @@ function renderMarketCharts(summaryRows) {
         },
         {
           label: "ROAS GG",
-          data: summaryRows.map(row => row.roasGg === null ? 0 : row.roasGg),
+          data: summaryRows.map(row => row.roasGg === null ? null : row.roasGg),
           backgroundColor: "rgba(159, 124, 255, 0.65)",
           borderColor: "#9f7cff",
           borderWidth: 1
@@ -1502,14 +1597,18 @@ function rememberOverviewNodes() {
   if (overviewNodes.length) return;
 
   const marketView = document.getElementById("marketView");
-  const tabNav = document.getElementById("reportTabs");
   const app = document.querySelector(".app") || document.body;
 
   overviewNodes = Array.from(app.children).filter(node => {
     if (node === marketView) return false;
-    if (node === tabNav) return false;
-    if (node.id === "reportTabs") return false;
     if (node.id === "marketView") return false;
+    if (node.id === "reportTabs") return false;
+
+    /* Các phần dùng chung cho mọi tab, không được ẩn. */
+    if (node.classList.contains("header")) return false;
+    if (node.classList.contains("filter-card")) return false;
+
+    /* Những node còn lại thường là KPI overview, chart overview, table overview. */
     return true;
   });
 }
