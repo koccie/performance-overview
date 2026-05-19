@@ -1,14 +1,26 @@
 "use strict";
 
 /*
-  Google Sheet published CSV.
+  Koccie Performance Overview
+  - Overview đọc CSV từ sheet Overview hiện tại.
+  - Market đọc CSV từ sheet Report_Market.
 
-  Dạng khuyến nghị:
-  https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&single=true&output=csv
-
-  Nếu lỡ dán dạng /pubhtml?... code sẽ cố tự chuyển sang /pub?...&output=csv
+  Việc cần làm sau khi paste code này:
+  1. Thay MARKET_CSV_URL bằng link CSV publish riêng của sheet Report_Market.
+  2. Trong index.html nên có container <div id="marketView"></div> nếu muốn chủ động vị trí hiển thị.
+     Nếu chưa có, app.js sẽ tự tạo marketView ở cuối trang.
 */
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1575530320&single=true&output=csv";
+
+const REPORT_SOURCES = {
+  overview: {
+    label: "Overview",
+    csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1575530320&single=true&output=csv"
+  },
+  market: {
+    label: "Market",
+    csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22HikxPvejxlLq1xc6OxgcMKavxvfcrZjUBo3DmzK20_pMVzINDWzUOSC_FZ6-sf10H3bN/pub?gid=1730682205&single=true&output=csv"
+  }
+};
 
 /*
   Khi ngày trong CSV có dạng mơ hồ như 05/12/2026:
@@ -19,29 +31,55 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSexO0zuj22Hikx
 */
 const DATE_FORMAT_PREFERENCE = "MDY";
 
-const CORE_HEADERS = [
-  "Date",
-  "Total Orders",
-  "Total Sales"
-];
+const CORE_HEADERS_BY_REPORT = {
+  overview: ["Date", "Total Orders", "Total Sales"],
+  market: ["Date", "Market", "Total Orders", "Total Sales"]
+};
 
-const EXPECTED_HEADERS = [
-  "Date",
-  "Total Orders",
-  "Total Sales",
-  "FB Ads Spend",
-  "Google Ads Spend",
-  "Total Ads Spend",
-  "ROAS",
-  "Profit",
-  "API Cost",
-  "Fulfill Cost",
-  "Fixed Cost"
-];
+const EXPECTED_HEADERS_BY_REPORT = {
+  overview: [
+    "Date",
+    "Total Orders",
+    "Total Sales",
+    "FB Ads Spend",
+    "Google Ads Spend",
+    "Total Ads Spend",
+    "ROAS",
+    "Profit",
+    "API Cost",
+    "Fulfill Cost",
+    "Fixed Cost"
+  ],
+  market: [
+    "Date",
+    "Market",
+    "Total Orders",
+    "Total Sales",
+    "AOV",
+    "Items Sold",
+    "Total Ad spent",
+    "ROAS",
+    "FB Ad spent",
+    "ROAS FB",
+    "GG Ad spent",
+    "ROAS GG"
+  ]
+};
 
-let allData = [];
+let activeReport = "overview";
+let reportData = {
+  overview: [],
+  market: []
+};
+let reportLoaded = {
+  overview: false,
+  market: false
+};
 let currentChart = null;
+let marketCharts = {};
 let filtersInitialized = false;
+let tabsInitialized = false;
+let overviewNodes = [];
 
 function normalizeHeader(value) {
   return String(value || "")
@@ -90,10 +128,11 @@ function setQueryParam(url, key, value) {
   }
 }
 
-function getResolvedCsvUrl() {
-  const rawUrl = String(CSV_URL || "").trim();
+function getResolvedCsvUrl(reportKey) {
+  const source = REPORT_SOURCES[reportKey];
+  const rawUrl = String(source && source.csvUrl ? source.csvUrl : "").trim();
 
-  if (!rawUrl || rawUrl === "DAN_LINK_CSV_CUA_BAN_VAO_DAY") {
+  if (!rawUrl || rawUrl.startsWith("DAN_LINK_CSV")) {
     return rawUrl;
   }
 
@@ -182,6 +221,10 @@ function formatPercent(value) {
 }
 
 function formatRoas(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "N/A";
+  }
+
   return `${(Number(value) || 0).toFixed(2)}x`;
 }
 
@@ -224,10 +267,6 @@ function parseDate(value) {
 
   if (!raw) return null;
 
-  /*
-    Google Sheets đôi khi export date serial number.
-    25569 = 1970-01-01 theo Excel/Google Sheets serial date.
-  */
   if (/^\d+(\.\d+)?$/.test(raw)) {
     const serialNumber = Number(raw);
 
@@ -243,12 +282,6 @@ function parseDate(value) {
     }
   }
 
-  /*
-    ISO-like:
-    2026-05-12
-    2026/05/12
-    2026.05.12
-  */
   const ymd = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
 
   if (ymd) {
@@ -259,14 +292,6 @@ function parseDate(value) {
     return makeDate(year, month, day);
   }
 
-  /*
-    Dạng:
-    05/12/2026
-    05-12-2026
-    05.12.2026
-
-    Nếu cả ngày và tháng đều <= 12 thì dùng DATE_FORMAT_PREFERENCE.
-  */
   const slashDate = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
 
   if (slashDate) {
@@ -294,11 +319,6 @@ function parseDate(value) {
     return makeDate(year, month, day);
   }
 
-  /*
-    Fallback cho các format như:
-    May 12, 2026
-    12 May 2026
-  */
   const fallback = new Date(raw);
 
   if (!Number.isNaN(fallback.getTime())) {
@@ -354,7 +374,9 @@ function rowHasHeader(row, headerName) {
   return row.some(cell => normalizeHeader(cell).toLowerCase() === target);
 }
 
-function findHeaderIndex(rows) {
+function findHeaderIndex(rows, reportKey) {
+  const coreHeaders = CORE_HEADERS_BY_REPORT[reportKey] || ["Date"];
+
   const candidates = rows
     .map((row, index) => ({ row, index }))
     .filter(item => normalizeHeader(item.row[0]).toLowerCase() === "date");
@@ -363,12 +385,8 @@ function findHeaderIndex(rows) {
     return -1;
   }
 
-  /*
-    Ưu tiên dòng có cột A = Date và có đủ core headers.
-    Nếu không thấy dòng đủ core headers thì fallback về dòng đầu tiên có cột A = Date.
-  */
   const strongCandidate = candidates.find(item =>
-    CORE_HEADERS.every(header => rowHasHeader(item.row, header))
+    coreHeaders.every(header => rowHasHeader(item.row, header))
   );
 
   return strongCandidate ? strongCandidate.index : candidates[0].index;
@@ -408,7 +426,7 @@ function rowsToObjects(rows, headerIndex) {
   };
 }
 
-function normalizeRow(row) {
+function normalizeOverviewRow(row) {
   const rawDateText = String(getValue(row, ["Date"]) || "").trim();
   const dateObj = parseDate(rawDateText);
   const dateText = dateObj ? toInputDate(dateObj) : rawDateText;
@@ -422,10 +440,6 @@ function normalizeRow(row) {
   const totalAdsRaw = getValue(row, ["Total Ads Spend"]);
   let totalAdsSpend = cleanNumber(totalAdsRaw);
 
-  /*
-    Fallback: nếu Total Ads Spend trống hoặc bằng 0 nhưng FB/Google có số,
-    tự cộng FB Ads Spend + Google Ads Spend.
-  */
   if ((totalAdsRaw === "" || totalAdsSpend === 0) && (fbAdsSpend || googleAdsSpend)) {
     totalAdsSpend = fbAdsSpend + googleAdsSpend;
   }
@@ -436,7 +450,7 @@ function normalizeRow(row) {
     roas = totalSales / totalAdsSpend;
   }
 
-  const profit = cleanNumber(getValue(row, ["Profit"]));
+  const profit = cleanNumber(getValue(row, ["Profit", "Net Profit"]));
   const apiCost = cleanNumber(getValue(row, ["API Cost"]));
   const fulfillCost = cleanNumber(getValue(row, ["Fulfill Cost"]));
   const fixedCost = cleanNumber(getValue(row, ["Fixed Cost"]));
@@ -458,6 +472,38 @@ function normalizeRow(row) {
   };
 }
 
+function normalizeMarketRow(row) {
+  const rawDateText = String(getValue(row, ["Date"]) || "").trim();
+  const dateObj = parseDate(rawDateText);
+  const dateText = dateObj ? toInputDate(dateObj) : rawDateText;
+  const market = normalizeHeader(getValue(row, ["Market"])).toUpperCase();
+
+  const totalOrders = cleanNumber(getValue(row, ["Total Orders"]));
+  const totalSales = cleanNumber(getValue(row, ["Total Sales"]));
+  const aovRaw = cleanNumber(getValue(row, ["AOV"]));
+  const itemsSold = cleanNumber(getValue(row, ["Items Sold"]));
+  const totalAdsSpend = cleanNumber(getValue(row, ["Total Ad spent", "Total Ads Spend", "Total Ads spent"]));
+  const fbAdsSpend = cleanNumber(getValue(row, ["FB Ad spent", "FB Ads Spend", "FB Ads spent"]));
+  const ggAdsSpend = cleanNumber(getValue(row, ["GG Ad spent", "Google Ads Spend", "GG Ads Spend"]));
+
+  return {
+    rawDateText,
+    dateText,
+    dateObj,
+    market,
+    totalOrders,
+    totalSales,
+    aov: aovRaw || safeDivide(totalSales, totalOrders),
+    itemsSold,
+    totalAdsSpend,
+    fbAdsSpend,
+    ggAdsSpend,
+    roas: totalAdsSpend > 0 ? totalSales / totalAdsSpend : 0,
+    roasFb: fbAdsSpend > 0 ? totalSales / fbAdsSpend : 0,
+    roasGg: ggAdsSpend > 0 ? totalSales / ggAdsSpend : null
+  };
+}
+
 function isValidDataRow(row) {
   const dateLower = normalizeHeader(row.rawDateText || row.dateText).toLowerCase();
 
@@ -471,6 +517,12 @@ function isValidDataRow(row) {
   return true;
 }
 
+function isValidMarketRow(row) {
+  if (!isValidDataRow(row)) return false;
+  if (!row.market || row.market === "MARKET") return false;
+  return true;
+}
+
 function getLatestDate(data) {
   const dates = data
     .map(row => row.dateObj)
@@ -481,7 +533,7 @@ function getLatestDate(data) {
   return dates[0] || null;
 }
 
-function calculateTotals(data) {
+function calculateOverviewTotals(data) {
   return data.reduce((totals, row) => {
     totals.totalOrders += row.totalOrders;
     totals.totalSales += row.totalSales;
@@ -507,8 +559,79 @@ function calculateTotals(data) {
   });
 }
 
-function updateKPIs(data) {
-  const totals = calculateTotals(data);
+function aggregateMarketData(data) {
+  const map = {};
+
+  data.forEach(row => {
+    const market = row.market || "UNKNOWN";
+
+    if (!map[market]) {
+      map[market] = {
+        market,
+        totalOrders: 0,
+        totalSales: 0,
+        itemsSold: 0,
+        totalAdsSpend: 0,
+        fbAdsSpend: 0,
+        ggAdsSpend: 0,
+        aov: 0,
+        roas: 0,
+        roasFb: 0,
+        roasGg: null
+      };
+    }
+
+    map[market].totalOrders += row.totalOrders;
+    map[market].totalSales += row.totalSales;
+    map[market].itemsSold += row.itemsSold;
+    map[market].totalAdsSpend += row.totalAdsSpend;
+    map[market].fbAdsSpend += row.fbAdsSpend;
+    map[market].ggAdsSpend += row.ggAdsSpend;
+  });
+
+  return Object.values(map)
+    .map(item => {
+      item.aov = safeDivide(item.totalSales, item.totalOrders);
+      item.roas = safeDivide(item.totalSales, item.totalAdsSpend);
+      item.roasFb = safeDivide(item.totalSales, item.fbAdsSpend);
+      item.roasGg = item.ggAdsSpend > 0 ? item.totalSales / item.ggAdsSpend : null;
+      return item;
+    })
+    .sort((a, b) => b.totalSales - a.totalSales);
+}
+
+function calculateMarketTotals(summaryRows) {
+  const totals = summaryRows.reduce((acc, row) => {
+    acc.totalOrders += row.totalOrders;
+    acc.totalSales += row.totalSales;
+    acc.itemsSold += row.itemsSold;
+    acc.totalAdsSpend += row.totalAdsSpend;
+    acc.fbAdsSpend += row.fbAdsSpend;
+    acc.ggAdsSpend += row.ggAdsSpend;
+    return acc;
+  }, {
+    totalOrders: 0,
+    totalSales: 0,
+    itemsSold: 0,
+    totalAdsSpend: 0,
+    fbAdsSpend: 0,
+    ggAdsSpend: 0,
+    aov: 0,
+    roas: 0,
+    roasFb: 0,
+    roasGg: null
+  });
+
+  totals.aov = safeDivide(totals.totalSales, totals.totalOrders);
+  totals.roas = safeDivide(totals.totalSales, totals.totalAdsSpend);
+  totals.roasFb = safeDivide(totals.totalSales, totals.fbAdsSpend);
+  totals.roasGg = totals.ggAdsSpend > 0 ? totals.totalSales / totals.ggAdsSpend : null;
+
+  return totals;
+}
+
+function updateOverviewKPIs(data) {
+  const totals = calculateOverviewTotals(data);
 
   const aov = safeDivide(totals.totalSales, totals.totalOrders);
   const roas = safeDivide(totals.totalSales, totals.totalAdsSpend);
@@ -519,10 +642,6 @@ function updateKPIs(data) {
   const apiCostPct = safePercent(totals.apiCost, totals.totalSales);
   const fulfillCostPct = safePercent(totals.fulfillCost, totals.totalSales);
 
-  /*
-    KPI dòng trên, không có %:
-    Total Orders, Total Sales, AOV, ROAS, Net Profit
-  */
   setText("totalOrders", formatNumber(totals.totalOrders));
   setText("totalSales", formatMoney(totals.totalSales));
   setText("aov", formatMoney(aov));
@@ -530,10 +649,6 @@ function updateKPIs(data) {
   setText("netProfit", formatMoney(totals.profit));
   setToneClass("netProfit", totals.profit);
 
-  /*
-    KPI dòng dưới, có %:
-    Total Ads Spend, FB Ads Spend, Google Ads Spend, API Cost, Fulfill Cost
-  */
   setText("totalAdsSpend", formatMoney(totals.totalAdsSpend));
   setText("totalAdsSpendPct", formatPercent(totalAdsSpendPct));
 
@@ -550,7 +665,7 @@ function updateKPIs(data) {
   setText("fulfillCostPct", formatPercent(fulfillCostPct));
 }
 
-function renderChart(data) {
+function renderOverviewChart(data) {
   const canvas = document.getElementById("performanceChart");
 
   if (!canvas) return;
@@ -604,70 +719,188 @@ function renderChart(data) {
         }
       ]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      resizeDelay: 100,
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          position: "top",
-          labels: {
-            color: "#d9ecff",
-            usePointStyle: true,
-            boxWidth: 8,
-            boxHeight: 8,
-            padding: 16
-          }
-        },
-        tooltip: {
-          backgroundColor: "#08111f",
-          borderColor: "#244b7c",
-          borderWidth: 1,
-          titleColor: "#ffffff",
-          bodyColor: "#d9ecff",
-          callbacks: {
-            label: function(context) {
-              return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#7fa7d9",
-            autoSkip: true,
-            maxTicksLimit: 10,
-            maxRotation: 0,
-            minRotation: 0
-          },
-          grid: {
-            color: "rgba(20, 41, 69, 0.8)"
-          }
-        },
-        y: {
-          beginAtZero: false,
-          ticks: {
-            color: "#7fa7d9",
-            maxTicksLimit: 8,
-            callback: function(value) {
-              return formatCompactMoney(value);
-            }
-          },
-          grid: {
-            color: "rgba(20, 41, 69, 0.8)"
-          }
-        }
-      }
-    }
+    options: getLineChartOptions()
   });
 }
 
-function renderTable(data) {
+function getLineChartOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    resizeDelay: 100,
+    interaction: {
+      mode: "index",
+      intersect: false
+    },
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          color: "#d9ecff",
+          usePointStyle: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 16
+        }
+      },
+      tooltip: {
+        backgroundColor: "#08111f",
+        borderColor: "#244b7c",
+        borderWidth: 1,
+        titleColor: "#ffffff",
+        bodyColor: "#d9ecff",
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: "#7fa7d9",
+          autoSkip: true,
+          maxTicksLimit: 10,
+          maxRotation: 0,
+          minRotation: 0
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      },
+      y: {
+        beginAtZero: false,
+        ticks: {
+          color: "#7fa7d9",
+          maxTicksLimit: 8,
+          callback: function(value) {
+            return formatCompactMoney(value);
+          }
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      }
+    }
+  };
+}
+
+function getBarMoneyOptions(stacked) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    resizeDelay: 100,
+    interaction: {
+      mode: "index",
+      intersect: false
+    },
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          color: "#d9ecff",
+          usePointStyle: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 16
+        }
+      },
+      tooltip: {
+        backgroundColor: "#08111f",
+        borderColor: "#244b7c",
+        borderWidth: 1,
+        titleColor: "#ffffff",
+        bodyColor: "#d9ecff",
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: Boolean(stacked),
+        ticks: {
+          color: "#7fa7d9"
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      },
+      y: {
+        stacked: Boolean(stacked),
+        beginAtZero: true,
+        ticks: {
+          color: "#7fa7d9",
+          callback: function(value) {
+            return formatCompactMoney(value);
+          }
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      }
+    }
+  };
+}
+
+function getBarRoasOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    resizeDelay: 100,
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          color: "#d9ecff",
+          usePointStyle: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 16
+        }
+      },
+      tooltip: {
+        backgroundColor: "#08111f",
+        borderColor: "#244b7c",
+        borderWidth: 1,
+        titleColor: "#ffffff",
+        bodyColor: "#d9ecff",
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${formatRoas(context.parsed.y)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: "#7fa7d9"
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: "#7fa7d9",
+          callback: function(value) {
+            return `${Number(value).toFixed(1)}x`;
+          }
+        },
+        grid: {
+          color: "rgba(20, 41, 69, 0.8)"
+        }
+      }
+    }
+  };
+}
+
+function renderOverviewTable(data) {
   const tbody = document.getElementById("dataTable");
 
   if (!tbody) return;
@@ -702,10 +935,10 @@ function renderTable(data) {
   }).join("");
 }
 
-function renderDashboard(data, label) {
-  updateKPIs(data);
-  renderChart(data);
-  renderTable(data);
+function renderOverviewDashboard(data, label) {
+  updateOverviewKPIs(data);
+  renderOverviewChart(data);
+  renderOverviewTable(data);
 
   setText(
     "status",
@@ -717,28 +950,319 @@ function renderDashboard(data, label) {
   setText("rangeLabel", label);
 }
 
+function destroyMarketCharts() {
+  Object.keys(marketCharts).forEach(key => {
+    if (marketCharts[key]) {
+      marketCharts[key].destroy();
+      marketCharts[key] = null;
+    }
+  });
+}
+
+function ensureMarketView() {
+  let marketView = document.getElementById("marketView");
+
+  if (!marketView) {
+    marketView = document.createElement("section");
+    marketView.id = "marketView";
+    marketView.className = "report-view market-view";
+    document.querySelector(".app")?.appendChild(marketView) || document.body.appendChild(marketView);
+  }
+
+  if (!marketView.dataset.initialized) {
+    marketView.innerHTML = `
+      <div class="market-header report-section">
+        <div>
+          <h2>Market Performance</h2>
+          <p>So sánh doanh thu, ads spend và ROAS theo từng thị trường.</p>
+        </div>
+        <div class="market-note">Lưu ý: Google Ads hiện chỉ chạy ở FR. BEL và SWIZ sẽ hiển thị ROAS GG là N/A nếu không có spend.</div>
+      </div>
+
+      <div class="kpi-grid market-kpis">
+        <div class="kpi-card"><span>Total Sales</span><strong id="marketTotalSales">$ 0.00</strong></div>
+        <div class="kpi-card"><span>Total Orders</span><strong id="marketTotalOrders">0</strong></div>
+        <div class="kpi-card"><span>Total Ads Spend</span><strong id="marketTotalAdsSpend">$ 0.00</strong><small id="marketTotalAdsSpendPct">% 0.0</small></div>
+        <div class="kpi-card"><span>FB Ads Spend</span><strong id="marketFbAdsSpend">$ 0.00</strong><small id="marketFbAdsSpendPct">% 0.0</small></div>
+        <div class="kpi-card"><span>GG Ads Spend</span><strong id="marketGgAdsSpend">$ 0.00</strong><small id="marketGgAdsSpendPct">% 0.0</small></div>
+        <div class="kpi-card"><span>ROAS</span><strong id="marketRoas">0.00x</strong></div>
+        <div class="kpi-card"><span>AOV</span><strong id="marketAov">$ 0.00</strong></div>
+        <div class="kpi-card"><span>Items Sold</span><strong id="marketItemsSold">0</strong></div>
+      </div>
+
+      <div class="chart-grid market-chart-grid">
+        <section class="chart-card">
+          <h3>Sales by Market</h3>
+          <div class="chart-box"><canvas id="marketSalesChart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h3>ROAS by Market</h3>
+          <div class="chart-box"><canvas id="marketRoasChart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h3>Sales vs Ads Spend</h3>
+          <div class="chart-box"><canvas id="marketSalesAdsChart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h3>Ads Spend Split</h3>
+          <div class="chart-box"><canvas id="marketAdsSplitChart"></canvas></div>
+        </section>
+      </div>
+
+      <section class="table-card market-table-card">
+        <h3>Market Ranking</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Total Orders</th>
+                <th>Items Sold</th>
+                <th>Total Sales</th>
+                <th>AOV</th>
+                <th>Total Ads Spend</th>
+                <th>FB Ads Spend</th>
+                <th>GG Ads Spend</th>
+                <th>ROAS</th>
+                <th>ROAS FB</th>
+                <th>ROAS GG</th>
+              </tr>
+            </thead>
+            <tbody id="marketTable"></tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+    marketView.dataset.initialized = "true";
+  }
+
+  return marketView;
+}
+
+function updateMarketKPIs(summaryRows) {
+  const totals = calculateMarketTotals(summaryRows);
+
+  setText("marketTotalSales", formatMoney(totals.totalSales));
+  setText("marketTotalOrders", formatNumber(totals.totalOrders));
+  setText("marketTotalAdsSpend", formatMoney(totals.totalAdsSpend));
+  setText("marketTotalAdsSpendPct", formatPercent(safePercent(totals.totalAdsSpend, totals.totalSales)));
+  setText("marketFbAdsSpend", formatMoney(totals.fbAdsSpend));
+  setText("marketFbAdsSpendPct", formatPercent(safePercent(totals.fbAdsSpend, totals.totalAdsSpend)));
+  setText("marketGgAdsSpend", formatMoney(totals.ggAdsSpend));
+  setText("marketGgAdsSpendPct", formatPercent(safePercent(totals.ggAdsSpend, totals.totalAdsSpend)));
+  setText("marketRoas", formatRoas(totals.roas));
+  setText("marketAov", formatMoney(totals.aov));
+  setText("marketItemsSold", formatNumber(totals.itemsSold));
+}
+
+function createOrReplaceChart(chartKey, canvasId, config) {
+  const canvas = document.getElementById(canvasId);
+
+  if (!canvas || typeof Chart === "undefined") return;
+
+  if (marketCharts[chartKey]) {
+    marketCharts[chartKey].destroy();
+  }
+
+  marketCharts[chartKey] = new Chart(canvas, config);
+}
+
+function renderMarketCharts(summaryRows) {
+  if (typeof Chart === "undefined") {
+    setText("status", "Chart.js chưa được load");
+    return;
+  }
+
+  const labels = summaryRows.map(row => row.market);
+
+  createOrReplaceChart("sales", "marketSalesChart", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Total Sales",
+          data: summaryRows.map(row => row.totalSales),
+          backgroundColor: "rgba(53, 208, 255, 0.65)",
+          borderColor: "#35d0ff",
+          borderWidth: 1
+        }
+      ]
+    },
+    options: getBarMoneyOptions(false)
+  });
+
+  createOrReplaceChart("roas", "marketRoasChart", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "ROAS",
+          data: summaryRows.map(row => row.roas),
+          backgroundColor: "rgba(39, 233, 143, 0.65)",
+          borderColor: "#27e98f",
+          borderWidth: 1
+        },
+        {
+          label: "ROAS FB",
+          data: summaryRows.map(row => row.roasFb),
+          backgroundColor: "rgba(255, 184, 77, 0.65)",
+          borderColor: "#ffb84d",
+          borderWidth: 1
+        },
+        {
+          label: "ROAS GG",
+          data: summaryRows.map(row => row.roasGg === null ? 0 : row.roasGg),
+          backgroundColor: "rgba(159, 124, 255, 0.65)",
+          borderColor: "#9f7cff",
+          borderWidth: 1
+        }
+      ]
+    },
+    options: getBarRoasOptions()
+  });
+
+  createOrReplaceChart("salesAds", "marketSalesAdsChart", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Total Sales",
+          data: summaryRows.map(row => row.totalSales),
+          backgroundColor: "rgba(53, 208, 255, 0.65)",
+          borderColor: "#35d0ff",
+          borderWidth: 1
+        },
+        {
+          label: "Total Ads Spend",
+          data: summaryRows.map(row => row.totalAdsSpend),
+          backgroundColor: "rgba(255, 184, 77, 0.65)",
+          borderColor: "#ffb84d",
+          borderWidth: 1
+        }
+      ]
+    },
+    options: getBarMoneyOptions(false)
+  });
+
+  createOrReplaceChart("adsSplit", "marketAdsSplitChart", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "FB Ads Spend",
+          data: summaryRows.map(row => row.fbAdsSpend),
+          backgroundColor: "rgba(255, 184, 77, 0.7)",
+          borderColor: "#ffb84d",
+          borderWidth: 1
+        },
+        {
+          label: "GG Ads Spend",
+          data: summaryRows.map(row => row.ggAdsSpend),
+          backgroundColor: "rgba(159, 124, 255, 0.7)",
+          borderColor: "#9f7cff",
+          borderWidth: 1
+        }
+      ]
+    },
+    options: getBarMoneyOptions(true)
+  });
+}
+
+function renderMarketTable(summaryRows) {
+  const tbody = document.getElementById("marketTable");
+
+  if (!tbody) return;
+
+  if (!summaryRows.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="11" class="empty-row">Không có dữ liệu market trong khoảng đã chọn</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = summaryRows.map(row => {
+    return `
+      <tr>
+        <td><strong>${escapeHtml(row.market)}</strong></td>
+        <td>${formatNumber(row.totalOrders)}</td>
+        <td>${formatNumber(row.itemsSold)}</td>
+        <td>${formatMoney(row.totalSales)}</td>
+        <td>${formatMoney(row.aov)}</td>
+        <td>${formatMoney(row.totalAdsSpend)}</td>
+        <td>${formatMoney(row.fbAdsSpend)}</td>
+        <td>${formatMoney(row.ggAdsSpend)}</td>
+        <td>${formatRoas(row.roas)}</td>
+        <td>${formatRoas(row.roasFb)}</td>
+        <td>${formatRoas(row.roasGg)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderMarketDashboard(data, label) {
+  ensureMarketView();
+
+  const summaryRows = aggregateMarketData(data);
+
+  updateMarketKPIs(summaryRows);
+  renderMarketCharts(summaryRows);
+  renderMarketTable(summaryRows);
+
+  setText(
+    "status",
+    data.length > 0
+      ? `Đã tải ${data.length} dòng Market`
+      : "Không có dữ liệu Market trong khoảng đã chọn"
+  );
+
+  setText("rangeLabel", label);
+}
+
+function getActiveData() {
+  return reportData[activeReport] || [];
+}
+
+function renderActiveReport(data, label) {
+  if (activeReport === "market") {
+    renderMarketDashboard(data, label);
+    return;
+  }
+
+  renderOverviewDashboard(data, label);
+}
+
 function filterBetweenDates(startDate, endDate) {
   if (!startDate || !endDate) return [];
 
   const start = dateOnly(startDate);
   const end = dateOnly(endDate);
+  const data = getActiveData();
 
-  return allData.filter(row => {
+  return data.filter(row => {
     const current = dateOnly(row.dateObj);
     return current >= start && current <= end;
   });
 }
 
 function applyRange(range) {
-  if (!allData.length) {
-    renderDashboard([], "No data");
+  const data = getActiveData();
+
+  if (!data.length) {
+    renderActiveReport([], "No data");
     return;
   }
 
-  const latestDate = getLatestDate(allData);
+  const latestDate = getLatestDate(data);
 
   if (range === "all" || !latestDate) {
-    renderDashboard(allData, "All data");
+    renderActiveReport(data, "All data");
     return;
   }
 
@@ -759,13 +1283,13 @@ function applyRange(range) {
     endDate = latestDate;
     label = `Last 7 days: ${toInputDate(startDate)} → ${toInputDate(endDate)}`;
   } else {
-    renderDashboard(allData, "All data");
+    renderActiveReport(data, "All data");
     return;
   }
 
   const filteredData = filterBetweenDates(startDate, endDate);
 
-  renderDashboard(filteredData, label);
+  renderActiveReport(filteredData, label);
 }
 
 function applyCustomRange() {
@@ -797,7 +1321,18 @@ function applyCustomRange() {
 
   const filteredData = filterBetweenDates(fromDate, toDate);
 
-  renderDashboard(filteredData, `Custom: ${fromValue} → ${toValue}`);
+  renderActiveReport(filteredData, `Custom: ${fromValue} → ${toValue}`);
+}
+
+function rerenderCurrentRange() {
+  const timeRange = document.getElementById("timeRange");
+  const selectedRange = timeRange ? timeRange.value : "all";
+
+  if (selectedRange === "custom") {
+    applyCustomRange();
+  } else {
+    applyRange(selectedRange || "all");
+  }
 }
 
 function setupFilters() {
@@ -817,7 +1352,7 @@ function setupFilters() {
     if (selectedRange === "custom") {
       customRange.classList.add("show");
 
-      const latestDate = getLatestDate(allData);
+      const latestDate = getLatestDate(getActiveData());
 
       if (latestDate) {
         const latestInputDate = toInputDate(latestDate);
@@ -844,135 +1379,232 @@ function isNonEmptyCsvRow(row) {
   return Array.isArray(row) && row.some(cell => normalizeHeader(cell) !== "");
 }
 
-function loadData() {
-  const csvUrl = getResolvedCsvUrl();
+function parseCsvResultsToData(results, reportKey, csvUrl) {
+  if (results.errors && results.errors.length > 0) {
+    console.warn("PapaParse warnings/errors:", results.errors);
+  }
 
-  renderDashboard([], "Loading...");
-  setText("status", "Đang tải dữ liệu...");
+  const rows = (results.data || [])
+    .filter(isNonEmptyCsvRow)
+    .map(row => row.map(cell => cell ?? ""));
 
-  if (!csvUrl || csvUrl === "DAN_LINK_CSV_CUA_BAN_VAO_DAY") {
-    setText("status", "Chưa cấu hình CSV_URL trong app.js");
-    setText("rangeLabel", "No CSV URL");
-    return;
+  console.groupCollapsed(`Koccie CSV Debug - ${reportKey}`);
+  console.log("Resolved CSV URL:", csvUrl);
+  console.log("First 20 parsed rows:", rows.slice(0, 20));
+  console.groupEnd();
+
+  if (!rows.length) {
+    throw new Error("CSV không có dữ liệu hoặc link chưa đúng dạng CSV");
+  }
+
+  const headerIndex = findHeaderIndex(rows, reportKey);
+
+  if (headerIndex === -1) {
+    console.groupCollapsed("Header Debug");
+    console.log("Không tìm thấy row có cột A chính xác là Date");
+    console.log("First 30 rows:", rows.slice(0, 30));
+    console.groupEnd();
+
+    throw new Error("Không tìm thấy dòng header ở cột A: Date");
+  }
+
+  const parsed = rowsToObjects(rows, headerIndex);
+  const headers = parsed.headers;
+  const rawObjects = parsed.objects;
+
+  const coreHeaders = CORE_HEADERS_BY_REPORT[reportKey] || ["Date"];
+  const expectedHeaders = EXPECTED_HEADERS_BY_REPORT[reportKey] || coreHeaders;
+  const missingCoreHeaders = getMissingHeaders(headers, coreHeaders);
+
+  if (missingCoreHeaders.length > 0) {
+    console.groupCollapsed("Header Incomplete Debug");
+    console.log("Header row number:", headerIndex + 1);
+    console.log("Headers found:", headers);
+    console.log("Missing core headers:", missingCoreHeaders);
+    console.groupEnd();
+
+    throw new Error(`Tìm thấy Date ở dòng ${headerIndex + 1}, nhưng thiếu header: ${missingCoreHeaders.join(", ")}`);
+  }
+
+  const missingExpectedHeaders = getMissingHeaders(headers, expectedHeaders);
+
+  if (missingExpectedHeaders.length > 0) {
+    console.warn(
+      `Một số header không có trong CSV ${reportKey}. Các chỉ số tương ứng có thể về 0:`,
+      missingExpectedHeaders
+    );
+  }
+
+  const normalizedRows = reportKey === "market"
+    ? rawObjects.map(normalizeMarketRow)
+    : rawObjects.map(normalizeOverviewRow);
+
+  const validRows = reportKey === "market"
+    ? normalizedRows.filter(isValidMarketRow)
+    : normalizedRows.filter(isValidDataRow);
+
+  const invalidRows = normalizedRows.filter(row =>
+    reportKey === "market" ? !isValidMarketRow(row) : !isValidDataRow(row)
+  );
+
+  const sortedRows = validRows.sort((a, b) => a.dateObj - b.dateObj);
+
+  console.groupCollapsed(`Koccie Data Debug - ${reportKey}`);
+  console.log("Header row number:", headerIndex + 1);
+  console.log("Headers:", headers);
+  console.log("Raw data rows:", rawObjects.length);
+  console.log("Valid rows:", sortedRows.length);
+  console.log("Skipped rows:", invalidRows.length);
+  console.log("Sample valid rows:", sortedRows.slice(0, 5));
+  console.log("Sample skipped rows:", invalidRows.slice(0, 5));
+  console.groupEnd();
+
+  return sortedRows;
+}
+
+function loadReportData(reportKey) {
+  const csvUrl = getResolvedCsvUrl(reportKey);
+
+  setText("status", `Đang tải dữ liệu ${REPORT_SOURCES[reportKey].label}...`);
+
+  if (!csvUrl || csvUrl.startsWith("DAN_LINK_CSV")) {
+    throw new Error(`Chưa cấu hình CSV URL cho tab ${REPORT_SOURCES[reportKey].label} trong app.js`);
   }
 
   if (typeof Papa === "undefined") {
-    setText("status", "PapaParse chưa được load");
-    return;
+    throw new Error("PapaParse chưa được load");
   }
 
-  Papa.parse(csvUrl, {
-    download: true,
-    header: false,
-    skipEmptyLines: true,
-    complete: function(results) {
-      if (results.errors && results.errors.length > 0) {
-        console.warn("PapaParse warnings/errors:", results.errors);
+  return new Promise((resolve, reject) => {
+    Papa.parse(csvUrl, {
+      download: true,
+      header: false,
+      skipEmptyLines: true,
+      complete: function(results) {
+        try {
+          const data = parseCsvResultsToData(results, reportKey, csvUrl);
+          reportData[reportKey] = data;
+          reportLoaded[reportKey] = true;
+          resolve(data);
+        } catch (error) {
+          reject(error);
+        }
+      },
+      error: function(error) {
+        console.error("CSV load error:", error);
+        reject(new Error("Lỗi tải dữ liệu CSV"));
       }
-
-      const rows = (results.data || [])
-        .filter(isNonEmptyCsvRow)
-        .map(row => row.map(cell => cell ?? ""));
-
-      console.groupCollapsed("Koccie CSV Debug");
-      console.log("Resolved CSV URL:", csvUrl);
-      console.log("First 20 parsed rows:", rows.slice(0, 20));
-      console.groupEnd();
-
-      if (!rows.length) {
-        renderDashboard([], "No data");
-        setText("status", "CSV không có dữ liệu hoặc link chưa đúng dạng CSV");
-        return;
-      }
-
-      const headerIndex = findHeaderIndex(rows);
-
-      if (headerIndex === -1) {
-        renderDashboard([], "Header not found");
-        setText("status", "Không tìm thấy dòng header ở cột A: Date");
-
-        console.groupCollapsed("Header Debug");
-        console.log("Không tìm thấy row có cột A chính xác là Date");
-        console.log("First 30 rows:", rows.slice(0, 30));
-        console.groupEnd();
-
-        return;
-      }
-
-      const parsed = rowsToObjects(rows, headerIndex);
-      const headers = parsed.headers;
-      const rawObjects = parsed.objects;
-
-      const missingCoreHeaders = getMissingHeaders(headers, CORE_HEADERS);
-
-      if (missingCoreHeaders.length > 0) {
-        renderDashboard([], "Header incomplete");
-        setText(
-          "status",
-          `Tìm thấy Date ở dòng ${headerIndex + 1}, nhưng thiếu header: ${missingCoreHeaders.join(", ")}`
-        );
-
-        console.groupCollapsed("Header Incomplete Debug");
-        console.log("Header row number:", headerIndex + 1);
-        console.log("Headers found:", headers);
-        console.log("Missing core headers:", missingCoreHeaders);
-        console.groupEnd();
-
-        return;
-      }
-
-      const missingExpectedHeaders = getMissingHeaders(headers, EXPECTED_HEADERS);
-
-      if (missingExpectedHeaders.length > 0) {
-        console.warn(
-          "Một số header không có trong CSV. Các chỉ số tương ứng sẽ về 0:",
-          missingExpectedHeaders
-        );
-      }
-
-      const normalizedRows = rawObjects.map(normalizeRow);
-      const validRows = normalizedRows.filter(isValidDataRow);
-      const invalidRows = normalizedRows.filter(row => !isValidDataRow(row));
-
-      allData = validRows.sort((a, b) => a.dateObj - b.dateObj);
-
-      console.groupCollapsed("Koccie Data Debug");
-      console.log("Header row number:", headerIndex + 1);
-      console.log("Headers:", headers);
-      console.log("Raw data rows:", rawObjects.length);
-      console.log("Valid daily rows:", allData.length);
-      console.log("Skipped rows:", invalidRows.length);
-      console.log("Sample valid rows:", allData.slice(0, 5));
-      console.log("Sample skipped rows:", invalidRows.slice(0, 5));
-      console.groupEnd();
-
-      setupFilters();
-
-      if (!allData.length) {
-        renderDashboard([], "No valid data");
-        setText("status", "Tìm thấy header nhưng không có daily data hợp lệ");
-        return;
-      }
-
-      const timeRange = document.getElementById("timeRange");
-      const selectedRange = timeRange ? timeRange.value : "all";
-
-      if (selectedRange === "custom") {
-        applyCustomRange();
-      } else {
-        applyRange(selectedRange || "all");
-      }
-    },
-    error: function(error) {
-      console.error("CSV load error:", error);
-      renderDashboard([], "Load error");
-      setText("status", "Lỗi tải dữ liệu CSV");
-    }
+    });
   });
 }
 
+function rememberOverviewNodes() {
+  if (overviewNodes.length) return;
+
+  const marketView = document.getElementById("marketView");
+  const tabNav = document.getElementById("reportTabs");
+  const app = document.querySelector(".app") || document.body;
+
+  overviewNodes = Array.from(app.children).filter(node => {
+    if (node === marketView) return false;
+    if (node === tabNav) return false;
+    if (node.id === "reportTabs") return false;
+    if (node.id === "marketView") return false;
+    return true;
+  });
+}
+
+function setOverviewVisible(isVisible) {
+  rememberOverviewNodes();
+
+  overviewNodes.forEach(node => {
+    node.style.display = isVisible ? "" : "none";
+  });
+}
+
+function ensureTabs() {
+  if (tabsInitialized) return;
+
+  const app = document.querySelector(".app") || document.body;
+  const header = document.querySelector(".header");
+  const tabs = document.createElement("nav");
+
+  tabs.id = "reportTabs";
+  tabs.className = "report-tabs";
+  tabs.innerHTML = `
+    <button type="button" class="report-tab active" data-report="overview">Overview</button>
+    <button type="button" class="report-tab" data-report="market">Market</button>
+  `;
+
+  if (header && header.parentNode) {
+    header.parentNode.insertBefore(tabs, header.nextSibling);
+  } else {
+    app.insertBefore(tabs, app.firstChild);
+  }
+
+  tabs.addEventListener("click", function(event) {
+    const button = event.target.closest("[data-report]");
+    if (!button) return;
+
+    switchReport(button.dataset.report);
+  });
+
+  tabsInitialized = true;
+}
+
+function updateActiveTabUi() {
+  document.querySelectorAll(".report-tab").forEach(button => {
+    button.classList.toggle("active", button.dataset.report === activeReport);
+  });
+}
+
+async function switchReport(reportKey) {
+  if (!REPORT_SOURCES[reportKey]) return;
+
+  activeReport = reportKey;
+  updateActiveTabUi();
+
+  const marketView = ensureMarketView();
+
+  if (reportKey === "market") {
+    setOverviewVisible(false);
+    marketView.style.display = "";
+  } else {
+    marketView.style.display = "none";
+    destroyMarketCharts();
+    setOverviewVisible(true);
+  }
+
+  try {
+    if (!reportLoaded[reportKey]) {
+      await loadReportData(reportKey);
+    }
+
+    rerenderCurrentRange();
+  } catch (error) {
+    console.error(error);
+    renderActiveReport([], "Load error");
+    setText("status", error.message || "Lỗi tải dữ liệu");
+  }
+}
+
+async function initDashboard() {
+  ensureTabs();
+  ensureMarketView().style.display = "none";
+  setupFilters();
+
+  try {
+    await loadReportData("overview");
+    await switchReport("overview");
+  } catch (error) {
+    console.error(error);
+    renderOverviewDashboard([], "Load error");
+    setText("status", error.message || "Lỗi tải dữ liệu CSV");
+  }
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadData);
+  document.addEventListener("DOMContentLoaded", initDashboard);
 } else {
-  loadData();
+  initDashboard();
 }
