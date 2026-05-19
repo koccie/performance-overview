@@ -63,7 +63,6 @@ body {
   line-height: 1.2;
 }
 
-/* Nếu trong index.html vẫn còn subtitle thì ẩn đi */
 .header p {
   display: none;
 }
@@ -96,14 +95,18 @@ body {
 }
 
 .report-tab {
+  appearance: none;
+  -webkit-appearance: none;
   min-height: 40px;
-  padding: 0 16px;
+  padding: 0 18px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: var(--muted-bright);
+  font-family: inherit;
   font-size: 14px;
   font-weight: 800;
+  line-height: 40px;
   cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
@@ -233,10 +236,6 @@ input[type="date"]:focus {
 
 /* KPI cards */
 
-/*
-  Desktop: cố định 5 ô mỗi dòng.
-  Với 10 KPI cards sẽ thành đúng 2 dòng x 5 ô.
-*/
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -253,6 +252,7 @@ input[type="date"]:focus {
 
 .card p,
 .kpi-card span {
+  display: block;
   margin: 0 0 8px;
   color: var(--muted);
   font-size: 13px;
@@ -297,10 +297,6 @@ input[type="date"]:focus {
   font-weight: 800;
 }
 
-/*
-  Phần quan trọng để chart không bị cao quá / vỡ khung.
-  Canvas sẽ bị khóa theo chiều cao của container.
-*/
 .chart-card {
   width: 100%;
   min-width: 0;
@@ -312,10 +308,6 @@ input[type="date"]:focus {
   display: block;
 }
 
-/*
-  Nếu index.html của bạn có div bọc canvas class="chart-wrap",
-  rule này sẽ kiểm soát chiều cao chart.
-*/
 .chart-wrap,
 .chart-box {
   position: relative;
@@ -325,10 +317,6 @@ input[type="date"]:focus {
   overflow: hidden;
 }
 
-/*
-  Nếu index.html KHÔNG có .chart-wrap mà canvas nằm trực tiếp trong .chart-card,
-  rule này vẫn ép canvas về chiều cao hợp lý.
-*/
 .chart-card > canvas {
   height: 360px !important;
   max-height: 360px !important;
@@ -357,18 +345,18 @@ input[type="date"]:focus {
 }
 
 .market-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-  padding: 18px;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 16px;
+  align-items: stretch;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .market-header h2 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--title);
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
   line-height: 1.2;
 }
@@ -376,39 +364,68 @@ input[type="date"]:focus {
 .market-header p {
   margin: 0;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .market-note {
-  max-width: 430px;
+  display: flex;
+  align-items: center;
   padding: 10px 12px;
   border: 1px solid rgba(113, 214, 255, 0.28);
   border-radius: 10px;
   background: rgba(113, 214, 255, 0.06);
   color: var(--muted-bright);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .market-kpis {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.market-kpis .kpi-card {
+  min-height: 86px;
+  padding: 13px;
+}
+
+.market-kpis .kpi-card span {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.market-kpis .kpi-card strong {
+  font-size: 20px;
+}
+
+.market-kpis .kpi-card small {
+  margin-top: 5px;
+  font-size: 11px;
 }
 
 .market-chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .market-chart-grid .chart-card {
+  min-width: 0;
+  padding: 14px;
   margin-bottom: 0;
 }
 
+.market-chart-grid .chart-card h3 {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
 .market-chart-grid .chart-box {
-  height: 320px;
-  max-height: 320px;
+  height: 230px;
+  max-height: 230px;
 }
 
 .market-table-card table {
@@ -487,13 +504,18 @@ tr:hover td {
   }
 
   .market-chart-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chart-wrap,
   .chart-box {
     height: 340px;
     max-height: 340px;
+  }
+
+  .market-chart-grid .chart-box {
+    height: 260px;
+    max-height: 260px;
   }
 
   .chart-card > canvas {
@@ -550,18 +572,26 @@ tr:hover td {
   }
 
   .market-header {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .market-note {
-    max-width: none;
     width: 100%;
+  }
+
+  .market-chart-grid {
+    grid-template-columns: 1fr;
   }
 
   .chart-wrap,
   .chart-box {
     height: 320px;
     max-height: 320px;
+  }
+
+  .market-chart-grid .chart-box {
+    height: 280px;
+    max-height: 280px;
   }
 
   .chart-card > canvas {
@@ -609,6 +639,11 @@ tr:hover td {
   .chart-box {
     height: 280px;
     max-height: 280px;
+  }
+
+  .market-chart-grid .chart-box {
+    height: 260px;
+    max-height: 260px;
   }
 
   .chart-card > canvas {
