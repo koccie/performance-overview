@@ -14,6 +14,8 @@
   --blue-strong: #58a6ff;
   --green: #39d98a;
   --red: #ff5c7a;
+  --orange: #ffb84d;
+  --purple: #9f7cff;
   --shadow: rgba(0, 0, 0, 0.22);
 }
 
@@ -48,7 +50,7 @@ body {
   justify-content: space-between;
   gap: 20px;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   padding-bottom: 18px;
   border-bottom: 1px solid #1c3558;
 }
@@ -78,12 +80,59 @@ body {
   white-space: nowrap;
 }
 
+/* Report tabs */
+
+.report-tabs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 20px;
+  padding: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: rgba(13, 29, 51, 0.72);
+  box-shadow: 0 10px 30px var(--shadow);
+}
+
+.report-tab {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted-bright);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.report-tab:hover {
+  border-color: var(--border-bright);
+  background: rgba(113, 214, 255, 0.06);
+  color: var(--text);
+}
+
+.report-tab.active {
+  border-color: var(--blue-strong);
+  background: rgba(31, 111, 235, 0.24);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(113, 214, 255, 0.08);
+}
+
+.report-tab:active {
+  transform: translateY(1px);
+}
+
 /* Shared cards */
 
 .filter-card,
 .card,
+.kpi-card,
 .chart-card,
-.table-card {
+.table-card,
+.report-section {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -195,20 +244,24 @@ input[type="date"]:focus {
   margin-bottom: 20px;
 }
 
-.card {
+.card,
+.kpi-card {
   min-width: 0;
   min-height: 104px;
   padding: 16px;
 }
 
-.card p {
+.card p,
+.kpi-card span {
   margin: 0 0 8px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.25;
 }
 
-.card h2 {
+.card h2,
+.kpi-card strong {
+  display: block;
   margin: 0;
   color: var(--green);
   font-size: 24px;
@@ -218,7 +271,8 @@ input[type="date"]:focus {
   overflow-wrap: anywhere;
 }
 
-.card-sub {
+.card-sub,
+.kpi-card small {
   display: block;
   margin-top: 7px;
   color: var(--muted-bright);
@@ -262,7 +316,8 @@ input[type="date"]:focus {
   Nếu index.html của bạn có div bọc canvas class="chart-wrap",
   rule này sẽ kiểm soát chiều cao chart.
 */
-.chart-wrap {
+.chart-wrap,
+.chart-box {
   position: relative;
   width: 100%;
   height: 360px;
@@ -277,6 +332,91 @@ input[type="date"]:focus {
 .chart-card > canvas {
   height: 360px !important;
   max-height: 360px !important;
+}
+
+/* Market tab */
+
+.report-view {
+  width: 100%;
+}
+
+.market-view {
+  animation: fadeInReport 0.18s ease-out;
+}
+
+@keyframes fadeInReport {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.market-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.market-header h2 {
+  margin: 0 0 8px;
+  color: var(--title);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.market-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.market-note {
+  max-width: 430px;
+  padding: 10px 12px;
+  border: 1px solid rgba(113, 214, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(113, 214, 255, 0.06);
+  color: var(--muted-bright);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.market-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.market-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.market-chart-grid .chart-card {
+  margin-bottom: 0;
+}
+
+.market-chart-grid .chart-box {
+  height: 320px;
+  max-height: 320px;
+}
+
+.market-table-card table {
+  min-width: 1260px;
+}
+
+.market-table-card td:first-child strong {
+  color: var(--blue);
 }
 
 /* Table */
@@ -341,11 +481,17 @@ tr:hover td {
 /* Responsive */
 
 @media (max-width: 1200px) {
-  .kpi-grid {
+  .kpi-grid,
+  .market-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .chart-wrap {
+  .market-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-wrap,
+  .chart-box {
     height: 340px;
     max-height: 340px;
   }
@@ -370,6 +516,15 @@ tr:hover td {
     white-space: normal;
   }
 
+  .report-tabs {
+    gap: 8px;
+  }
+
+  .report-tab {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
   .filter-row {
     align-items: stretch;
   }
@@ -378,11 +533,13 @@ tr:hover td {
     text-align: left;
   }
 
-  .kpi-grid {
+  .kpi-grid,
+  .market-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .card h2 {
+  .card h2,
+  .kpi-card strong {
     font-size: 20px;
   }
 
@@ -392,7 +549,17 @@ tr:hover td {
     width: 100%;
   }
 
-  .chart-wrap {
+  .market-header {
+    flex-direction: column;
+  }
+
+  .market-note {
+    max-width: none;
+    width: 100%;
+  }
+
+  .chart-wrap,
+  .chart-box {
     height: 320px;
     max-height: 320px;
   }
@@ -412,18 +579,34 @@ tr:hover td {
     font-size: 22px;
   }
 
-  .kpi-grid {
+  .report-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .report-tab {
+    min-width: 0;
+    width: 100%;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .kpi-grid,
+  .market-kpis {
     grid-template-columns: 1fr;
   }
 
   .filter-card,
   .card,
+  .kpi-card,
   .chart-card,
-  .table-card {
+  .table-card,
+  .report-section {
     border-radius: 12px;
   }
 
-  .chart-wrap {
+  .chart-wrap,
+  .chart-box {
     height: 280px;
     max-height: 280px;
   }
