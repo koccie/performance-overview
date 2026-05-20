@@ -234,6 +234,14 @@ input[type="date"]:focus {
   filter: brightness(1.1);
 }
 
+.combined-filter-card {
+  margin-bottom: 16px;
+}
+
+.combined-filter-card .filter-row {
+  justify-content: flex-start;
+}
+
 /* KPI cards */
 
 .kpi-grid {
@@ -322,13 +330,10 @@ input[type="date"]:focus {
   max-height: 360px !important;
 }
 
-/* Market tab */
+/* Generic report tabs: Market / Product Type / Recipient / Combined */
 
 .report-view {
   width: 100%;
-}
-
-.market-view {
   animation: fadeInReport 0.18s ease-out;
 }
 
@@ -380,59 +385,79 @@ input[type="date"]:focus {
   line-height: 1.4;
 }
 
-.market-kpis {
+.market-kpis,
+.report-kpis {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.market-kpis .kpi-card {
+.market-kpis .kpi-card,
+.report-kpis .kpi-card {
   min-height: 86px;
   padding: 13px;
 }
 
-.market-kpis .kpi-card span {
+.market-kpis .kpi-card span,
+.report-kpis .kpi-card span {
   margin-bottom: 6px;
   font-size: 12px;
 }
 
-.market-kpis .kpi-card strong {
+.market-kpis .kpi-card strong,
+.report-kpis .kpi-card strong {
   font-size: 20px;
 }
 
-.market-kpis .kpi-card small {
+.market-kpis .kpi-card small,
+.report-kpis .kpi-card small {
   margin-top: 5px;
   font-size: 11px;
 }
 
-.market-chart-grid {
+.market-chart-grid,
+.report-chart-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.market-chart-grid .chart-card {
+.market-chart-grid .chart-card,
+.report-chart-grid .chart-card {
   min-width: 0;
   padding: 14px;
   margin-bottom: 0;
 }
 
-.market-chart-grid .chart-card h3 {
+.market-chart-grid .chart-card h3,
+.report-chart-grid .chart-card h3 {
   margin-bottom: 10px;
   font-size: 14px;
 }
 
-.market-chart-grid .chart-box {
+.market-chart-grid .chart-box,
+.report-chart-grid .chart-box {
   height: 230px;
   max-height: 230px;
 }
 
-.market-table-card table {
+.market-table-card,
+.report-view .table-card {
+  margin-bottom: 16px;
+}
+
+.market-table-card table,
+.report-view .table-card table {
   min-width: 1260px;
 }
 
-.market-table-card td:first-child strong {
+.combined-view .table-card table {
+  min-width: 1460px;
+}
+
+.market-table-card td:first-child strong,
+.report-view .table-card td:first-child strong {
   color: var(--blue);
 }
 
@@ -471,6 +496,7 @@ th {
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 tr:hover td {
@@ -499,11 +525,13 @@ tr:hover td {
 
 @media (max-width: 1200px) {
   .kpi-grid,
-  .market-kpis {
+  .market-kpis,
+  .report-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .market-chart-grid {
+  .market-chart-grid,
+  .report-chart-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -513,7 +541,8 @@ tr:hover td {
     max-height: 340px;
   }
 
-  .market-chart-grid .chart-box {
+  .market-chart-grid .chart-box,
+  .report-chart-grid .chart-box {
     height: 260px;
     max-height: 260px;
   }
@@ -556,7 +585,8 @@ tr:hover td {
   }
 
   .kpi-grid,
-  .market-kpis {
+  .market-kpis,
+  .report-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -579,7 +609,8 @@ tr:hover td {
     width: 100%;
   }
 
-  .market-chart-grid {
+  .market-chart-grid,
+  .report-chart-grid {
     grid-template-columns: 1fr;
   }
 
@@ -589,7 +620,8 @@ tr:hover td {
     max-height: 320px;
   }
 
-  .market-chart-grid .chart-box {
+  .market-chart-grid .chart-box,
+  .report-chart-grid .chart-box {
     height: 280px;
     max-height: 280px;
   }
@@ -622,7 +654,8 @@ tr:hover td {
   }
 
   .kpi-grid,
-  .market-kpis {
+  .market-kpis,
+  .report-kpis {
     grid-template-columns: 1fr;
   }
 
@@ -641,7 +674,8 @@ tr:hover td {
     max-height: 280px;
   }
 
-  .market-chart-grid .chart-box {
+  .market-chart-grid .chart-box,
+  .report-chart-grid .chart-box {
     height: 260px;
     max-height: 260px;
   }
